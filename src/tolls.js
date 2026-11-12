@@ -87,3 +87,10 @@ export function tollSelection(matches,overrides={}){
     included:entries.filter(toll=>toll.enabled)
   };
 }
+
+/** Sobrescrituras específicas por tramo; conserva compatibilidad con claves globales antiguas. */
+export function overridesForLeg(matches,allOverrides={},legIndex=0){
+  return Object.fromEntries(matches.map(toll=>[
+    toll.id,allOverrides[`${legIndex}:${toll.id}`]??allOverrides[toll.id]??{}
+  ]));
+}
