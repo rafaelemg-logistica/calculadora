@@ -97,23 +97,65 @@ function getPoints(){const n=getNodes();return state.scenario.viaCenter?[n.origi
 function textName(point){return getNodes()[point].name;}
 function addPointIcon(role,label){return L.divIcon({className:'',html:`<span class="map-pin ${role}">${label}</span>`,iconSize:[32,32],iconAnchor:[16,16]});}
 function initializeMap(){
- if(typeof L==='undefined'){
-   $('map').innerHTML='<div style="padding:45px;text-align:center">No se pudo cargar la biblioteca Leaflet. Comprueba tu conexión a Internet.</div>';
-   setStatus('Mapa no disponible. Puedes editar cantidades y parámetros.',true);return;
+ if(map){resetMapView();drawRoutes();return;}
+ if(!window.L){
+   $('map').innerHTML='<div class="map-error">No se pudo cargar Leaflet. Intenta «Reintentar mapa»; el cálculo seguirá funcionando.</div>';
+   setStatus('Mapa no disponible: bibliotecas cartográficas no accesibles.',true);return;
  }
- map=L.map('map',{zoomControl:false}).setView([4.9,-74.3],8);
+ $('map').innerHTML='';
+ map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([4.9,-74.3],8);
  L.control.zoom({position:'bottomright'}).addTo(map);
- L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-   attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',maxZoom:19
- }).addTo(map);
+ const useTiles=(url,attribution)=>{
+   if(baseTiles)map.removeLayer(baseTiles);
+   tileErrors=0;
+   baseTiles=L.tileLayer(url,{attribution,maxZoom:19}).addTo(map);
+   baseTiles.on('tileerror',()=>{
+     tileErrors++;
+     if(tileErrors>=4 && !mapBaseFallback){
+       mapBaseFallback=true;
+       useTiles('https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+         '© OpenStreetMap contributors · © CARTO');
+       setStatus('La base OpenStreetMap no respondió; se intentó un mapa alternativo.',true);
+     }else if(tileErrors>=4 && mapBaseFallback){
+       setStatus('No se cargan las teselas del mapa. Revisa tu conexión o usa «Reintentar mapa».',true);
+     }
+   });
+ };
+ mapBaseFallback=false;
+ useTiles('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+   '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors');
  markerLayer=L.layerGroup().addTo(map);
  routeLayer=L.layerGroup().addTo(map);
+ tollLayer=L.layerGroup().addTo(map);
  map.on('click',e=>{
    if(!placement)return;
    state.scenario.nodes[placement]={...state.scenario.nodes[placement],lat:e.latlng.lat,lng:e.latlng.lng};
    persist();renderMarkers();updateControls();setPlacement(null);void refreshRoutes();
  });
- renderMarkers();
+ renderMarkers();drawRoutes();
+ // Leaflet necesita recalcular dimensiones al desplegarse la cuadrícula y al redimensionar.
+ const resized=()=>{if(map)map.invalidateSize({pan:false,animate:false});};
+ if(window.ResizeObserver){
+   mapResizeObserver=new ResizeObserver(resized);
+   mapResizeObserver.observe($('map'));
+ }
+ window.addEventListener('resize',resized);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)resized();});
+ requestAnimationFrame(()=>{resized();fitToPoints();});
+ setTimeout(resized,250);
+}
+async function retryMap(){
+ if(!window.L){const loaded=await loadLeaflet();if(!loaded){
+   setStatus('No hay acceso a las bibliotecas de mapas. Comprueba el navegador o la conexión.',true);return;
+ }}
+ if(map){mapBaseFallback=false;tileErrors=0;if(baseTiles)map.removeLayer(baseTiles);
+  baseTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+   attribution:'© OpenStreetMap contributors',maxZoom:19
+  }).addTo(map);
+  baseTiles.on('tileerror',()=>setStatus('No se ha podido descargar alguna tesela. Puedes volver a intentar.',true));
+  resetMapView();
+ }else initializeMap();
+ void refreshRoutes();
 }
 function setPlacement(which){
  placement=which;
@@ -140,6 +182,21 @@ function fitToPoints(){
  const bounds=L.latLngBounds(getPoints().map(n=>[n.lat,n.lng]));
  map.fitBounds(bounds.pad(.25),{maxZoom:12,animate:false});
 }
+function renderTollMarkers(){
+ if(!map||!tollLayer)return;
+ tollLayer.clearLayers();
+ const seen=new Set();
+ const all=routes.flatMap(leg=>tollSelection(leg.tollCandidates??[],state.scenario.tollOverrides).entries);
+ for(const toll of all){
+   if(seen.has(toll.id))continue;seen.add(toll.id);
+   L.circleMarker([toll.lat,toll.lng],{
+     radius:7,weight:2,color:'#fff',fillColor:toll.enabled?'#c18225':'#959f98',fillOpacity:.95
+   }).bindPopup('<strong>'+esc(toll.name)+'</strong><br>Cat. '+esc(toll.category)+
+     ' · '+(toll.rateCOP===null?'Tarifa pendiente':cop(toll.rateCOP))+
+     '<br>'+esc(toll.sector)+'<br><small>Coincidencia por proximidad, verificar cobro.</small>')
+     .addTo(tollLayer);
+ }
+}
 function drawRoutes(){
  if(!map)return;
  routeLayer.clearLayers();
@@ -148,7 +205,7 @@ function drawRoutes(){
    L.polyline(leg.coordinates,{color:colors[index],weight:5,opacity:.87,dashArray:leg.source==='estimate'?'8 9':null})
     .bindTooltip(`Tramo ${index+1} · ${num(leg.distanceKm,1)} km · ${leg.source==='osrm'?'Ruta OSRM':'Estimación'}`).addTo(routeLayer);
  });
- fitToPoints();
+ renderTollMarkers();map.invalidateSize({pan:false,animate:false});fitToPoints();
 }
 async function refreshRoutes(){
  const request=++routingToken;
