@@ -1,3 +1,4 @@
+import {tollSelection, overridesForLeg} from './tolls.js';
 /** Motor determinista, independiente del mapa y de servicios externos. */
 const finiteNonnegative = (value, name) => {
   if (!Number.isFinite(value) || value < 0) throw new Error(`${name}: debe ser un número mayor o igual a cero`);
@@ -34,7 +35,7 @@ export function calculateScenario({scenario, parameters, legs}) {
   const crateCost = finiteNonnegative(+pack.crateCost, 'Costo de canastilla');
   const returnFactor = scenario.includeEmptyReturn ? 2 : 1;
   const ledger=[]; const warnings=[];
-  let kg=initialKg, logisticsLossKg=0, transportCOP=0, handlingCOP=0, distanceKm=0, elapsedHours=0, vehicleHours=0, vehicleTripCount=0;
+  let kg=initialKg, logisticsLossKg=0, transportCOP=0, freightCOP=0, tollCOP=0, handlingCOP=0, distanceKm=0, elapsedHours=0, vehicleHours=0, vehicleTripCount=0;
   if (scenario.applySelection) {
     const selection = kg * rates.selectionPerKg;
     handlingCOP+=selection;ledger.push(amount('Selección/acondicionamiento en origen',selection));
@@ -52,20 +53,35 @@ export function calculateScenario({scenario, parameters, legs}) {
     const trips = Math.max(1, Math.ceil(kg / vehicle.capacityKg));
     const tollValues = scenario.viaCenter ? scenario.centerTolls ?? [] : scenario.tolls ?? [];
     const quoteValues = scenario.viaCenter ? scenario.centerQuotes ?? [] : scenario.quotes ?? [];
-    const tollPerTrip=finiteNonnegative(+(tollValues[i]??0),`Peajes tramo ${i+1}`);
+    const manualTollPerTrip=finiteNonnegative(+(tollValues[i]??0),`Peajes tramo ${i+1}`);
+    const suggestion=tollSelection(leg.tollCandidates??[],overridesForLeg(leg.tollCandidates??[],scenario.tollOverrides??{},i));
+    const automatic=scenario.tollMode==='auto';
+    const tollPerTrip=automatic?suggestion.perTrip:manualTollPerTrip;
     const quotePerTrip=finiteNonnegative(+(quoteValues[i]??0),`Cotización tramo ${i+1}`);
     const distanceCostPerTrip=leg.distanceKm*vehicle.costPerKm*returnFactor;
-    // Un precio cotizado no se multiplica por dos cuando se activa el retorno.
+    // Una cotización integral puede incluir ya los peajes; no sumarlos dos veces.
     const basePerTrip=scenario.transportMethod==='quote'?quotePerTrip:distanceCostPerTrip;
-    const cost=trips*(basePerTrip+tollPerTrip);
-    transportCOP+=cost;
+    const quotedWithTolls=scenario.transportMethod==='quote'&&scenario.quoteIncludesTolls===true;
+    const billedTollPerTrip=quotedWithTolls?0:tollPerTrip;
+    const freight=trips*basePerTrip;
+    const tollCharge=trips*billedTollPerTrip;
+    const cost=freight+tollCharge;
+    transportCOP+=cost;freightCOP+=freight;tollCOP+=tollCharge;
     distanceKm+=leg.distanceKm;
     elapsedHours+=leg.durationMin/60;
     vehicleHours+=leg.durationMin/60*trips;
     vehicleTripCount+=trips;
-    ledger.push(amount(`Transporte tramo ${i+1} (${trips} viaje${trips>1?'s':''})`,cost));
-    legResults.push({index:i+1,inputKg:kg,trips,distanceKm:leg.distanceKm,durationMin:leg.durationMin,costCOP:money(cost),source:leg.source});
+    ledger.push(amount(`Transporte tramo ${i+1} (${trips} viaje${trips>1?'s':''})`,freight));
+    ledger.push(amount(`Peajes tramo ${i+1}`,tollCharge));
+    legResults.push({index:i+1,inputKg:kg,trips,distanceKm:leg.distanceKm,durationMin:leg.durationMin,
+      freightCOP:money(freight),tollCOP:money(tollCharge),tollPerTrip:money(tollPerTrip),
+      detectedTolls:automatic?suggestion.entries:[],costCOP:money(cost),source:leg.source});
     if(leg.source!=='osrm') warnings.push(`Tramo ${i+1}: trazado estimado, requiere validación vial.`);
+    if(automatic&&leg.source!=='osrm')warnings.push(`Tramo ${i+1}: peajes automáticos no verificables sin geometría vial; usar modo manual si se conocen.`);
+    if(automatic&&leg.source==='osrm'&&!suggestion.entries.length)warnings.push(`Tramo ${i+1}: ningún peaje identificado por proximidad; no confirma que sea un corredor libre de cobro.`);
+    if(automatic&&suggestion.missing.length)warnings.push(`Tramo ${i+1}: falta tarifa para categoría ${vehicle.tollCategory??'?'} en ${suggestion.missing.join(', ')}.`);
+    if(quotedWithTolls&&tollPerTrip>0)warnings.push(`Tramo ${i+1}: peajes mostrados como referencia, no sumados porque la cotización declara incluirlos.`);
+    if(automatic&&suggestion.entries.length)warnings.push(`Tramo ${i+1}: peajes candidatos por proximidad espacial; revisar sentido, categoría y tarifa vigente.`);
     if(scenario.transportMethod==='quote' && quotePerTrip===0) warnings.push(`Tramo ${i+1}: cotización ingresada en $0; actualizar para evitar subestimación.`);
     if(i===0 && scenario.viaCenter) {
       const unloading=kg*rates.unloadingPerKg;
@@ -86,6 +102,10 @@ export function calculateScenario({scenario, parameters, legs}) {
   const marketLossKg=kg*marketLoss;
   kg-=marketLossKg;logisticsLossKg+=marketLossKg;
   ledger.push({name:'Merma en destino (kg)',value:money(marketLossKg),kind:'mass'});
+  if(scenario.tollMode==='auto'){
+    const matches=legResults.flatMap(leg=>leg.detectedTolls.filter(toll=>toll.enabled).map(toll=>toll.id));
+    if(new Set(matches).size!==matches.length)warnings.push('Una misma estación figura en más de un tramo: revisa cada paso para evitar duplicidad de cobro.');
+  }
   const totalCOP=transportCOP+handlingCOP+packagingCOP;
   if(!crateCost)warnings.push('Costo de empaque sin monetizar: el costo total es parcial.');
   if(scenario.includeEmptyReturn)warnings.push('Retorno aproximado: se duplica el costo kilométrico; no la cotización ni los peajes.');
@@ -96,7 +116,7 @@ export function calculateScenario({scenario, parameters, legs}) {
   return {
     initialKg, deliveredKg:kg, logisticsLossKg, balanceErrorKg:balanceError,
     totalCOP:money(totalCOP), costPerDeliveredKg:kg>0?totalCOP/kg:null,
-    costPerDispatchedKg:totalCOP/initialKg, transportCOP:money(transportCOP),
+    costPerDispatchedKg:totalCOP/initialKg, transportCOP:money(transportCOP),freightCOP:money(freightCOP),tollCOP:money(tollCOP),
     handlingCOP:money(handlingCOP), packagingCOP:money(packagingCOP),crateCount,
     distanceKm, elapsedHours, vehicleHours, vehicleTripCount, vehicleId:vehicle.id,
     ledger,legs:legResults,warnings

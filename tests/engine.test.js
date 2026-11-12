@@ -6,6 +6,8 @@ import {haversineKm,lineFallback} from '../src/routing.js';
 
 const fixture=()=>{
  const {scenario,parameters}=cloneDefaults();
+ // Caso histórico E1 usa el importe manual aportado en el Excel.
+ scenario.tollMode='manual';
  return {scenario,parameters,legs:[{distanceKm:276.934,durationMin:4.93*60,source:'osrm'}]};
 };
 test('Replica costo y balance E1 del Excel con cotización manual',()=>{
@@ -72,4 +74,36 @@ test('El fallback no afirma que una línea recta sea vía real',()=>{
  const f=lineFallback(a,b,{fallbackDistanceMultiplier:1.25,fallbackSpeedKmh:42});
  assert.equal(f.source,'estimate');
  assert.equal(f.coordinates.length,2);
+});
+
+test('Peajes sugeridos por tramo son editables e incrementan el costo por viaje',()=>{
+ const f=fixture();f.scenario.tollMode='auto';
+ f.legs[0].tollCandidates=[
+  {id:'P1',name:'Peaje prueba',category:'IV',rateCOP:15000},
+  {id:'P2',name:'Otro peaje',category:'IV',rateCOP:10000}
+ ];
+ const r=calculateScenario(f);
+ assert.equal(r.tollCOP,25000);
+ assert.equal(r.legs[0].tollPerTrip,25000);
+ f.scenario.tollOverrides={P2:{enabled:false},P1:{rateCOP:22000}};
+ const changed=calculateScenario(f);
+ assert.equal(changed.tollCOP,22000);
+ assert.equal(changed.totalCOP-r.totalCOP,-3000);
+});
+test('Una cotización que incluye peajes no se cobra doble',()=>{
+ const f=fixture();f.scenario.transportMethod='quote';
+ f.scenario.quoteIncludesTolls=true;
+ const original=calculateScenario(f);
+ f.scenario.tolls=[999999];
+ const changed=calculateScenario(f);
+ assert.equal(changed.tollCOP,0);
+ assert.equal(changed.totalCOP,original.totalCOP);
+ assert.ok(changed.warnings.some(w=>w.includes('no sumados')));
+});
+test('Peajes no confirmados muestran advertencia en ruta estimada',()=>{
+ const f=fixture();f.scenario.tollMode='auto';
+ f.legs[0].source='estimate';
+ const r=calculateScenario(f);
+ assert.equal(r.tollCOP,0);
+ assert.ok(r.warnings.some(w=>w.includes('sin geometría vial')));
 });

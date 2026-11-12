@@ -7,7 +7,9 @@
   "license": "MIT",
   "scripts": {
     "dev": "python3 -m http.server 5173",
-    "test": "node --test tests/*.test.js"
+    "test": "node --check src/app.js && node --check src/routing.js && node --check src/tolls.js && node --test tests/*.test.js"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }
