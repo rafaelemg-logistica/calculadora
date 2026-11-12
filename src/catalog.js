@@ -9,12 +9,12 @@ export const DEFAULT_PARAMETERS = {
     source: '02_Productos del libro inicial', status: 'POR_VALIDAR'
   },
   vehicles: [
-    { id: 'V1', name: 'LUV / pickup', capacityKg: 1300, costPerKm: 958, source: 'SRC_COSTOS' },
-    { id: 'V2', name: 'Camión liviano 2 ejes', capacityKg: 3500, costPerKm: 1817, source: 'SRC_COSTOS' },
-    { id: 'V3', name: 'Camión C2 mediano', capacityKg: 7000, costPerKm: 2443, source: 'SRC_COSTOS' },
-    { id: 'V4', name: 'Camión C3 doble troque', capacityKg: 14000, costPerKm: 3453, source: 'SRC_COSTOS' },
-    { id: 'V5', name: 'Tractocamión C2S2', capacityKg: 18000, costPerKm: 3786, source: 'SRC_COSTOS' },
-    { id: 'V6', name: 'Tractocamión C3S2', capacityKg: 30000, costPerKm: 4322, source: 'SRC_COSTOS' }
+    { id: 'V1', tollCategory: 'I', name: 'LUV / pickup', capacityKg: 1300, costPerKm: 958, source: 'SRC_COSTOS' },
+    { id: 'V2', tollCategory: 'III', name: 'Camión liviano 2 ejes', capacityKg: 3500, costPerKm: 1817, source: 'SRC_COSTOS' },
+    { id: 'V3', tollCategory: 'IV', name: 'Camión C2 mediano', capacityKg: 7000, costPerKm: 2443, source: 'SRC_COSTOS' },
+    { id: 'V4', tollCategory: 'V', name: 'Camión C3 doble troque', capacityKg: 14000, costPerKm: 3453, source: 'SRC_COSTOS' },
+    { id: 'V5', tollCategory: 'V', name: 'Tractocamión C2S2', capacityKg: 18000, costPerKm: 3786, source: 'SRC_COSTOS' },
+    { id: 'V6', tollCategory: 'VI', name: 'Tractocamión C3S2', capacityKg: 30000, costPerKm: 4322, source: 'SRC_COSTOS' }
   ],
   operations: {
     selectionPerKg: { value: 74, source: 'SRC_CAL_LAB_2026', status: 'PROXY' },
@@ -44,6 +44,9 @@ export const DEFAULT_SCENARIO = {
   applySelection: true,
   includeEmptyReturn: false,
   transportMethod: 'km', // km | quote
+  tollMode: 'auto', // auto | manual; candidatos por proximidad a la ruta OSRM
+  tollOverrides: {}, // { [idPeaje]: {enabled, rateCOP} }
+  quoteIncludesTolls: false, // evita sumar peajes a una cotización integral
   // Tarifa del Excel, solo para reproducir el escenario al seleccionar cotización.
   quotes: [726932.564],
   centerQuotes: [0, 0],
