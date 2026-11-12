@@ -210,19 +210,28 @@ function drawRoutes(){
 async function refreshRoutes(){
  const request=++routingToken;
  comparisonToken++;
- setStatus('Calculando recorrido vial…');
+ const snapshot=structuredClone(state.scenario);
+ const points=snapshot.viaCenter?
+  [snapshot.nodes.origin,snapshot.nodes.center,snapshot.nodes.destination]:
+  [snapshot.nodes.origin,snapshot.nodes.destination];
+ const config={...state.parameters.routing};
+ // Provisional inmediata; evita mostrar la ruta anterior mientras OSRM responde.
+ routes=addTollCandidates(points.slice(1).map((point,i)=>lineFallback(points[i],point,config)),snapshot);
+ drawRoutes();renderFees();recalculate();
+ setStatus('Ruta provisional visible; consultando la red vial para reemplazarla…',true);
  $('btn-route').disabled=true;
  try{
-   const newRoutes=await routeScenario(state.scenario,state.parameters.routing);
+   const newRoutes=await routeScenario(snapshot,config);
    if(request!==routingToken)return;
-   routes=newRoutes;drawRoutes();recalculate();
+   routes=addTollCandidates(newRoutes,snapshot);
+   drawRoutes();renderFees();recalculate();
    const fallback=newRoutes.some(r=>r.source!=='osrm');
-   setStatus(fallback?'Ruta estimada: OSRM no respondió para al menos un tramo.':'Recorrido vial calculado con OSRM.',fallback);
+   setStatus(fallback?
+     'OSRM no respondió en algún tramo: distancia estimada, sin identificación automática de peajes.':
+     'Recorrido vial actualizado. Revisa las coincidencias de peajes y su tarifa.',fallback);
  }catch(error){
    if(request!==routingToken)return;
-   routes=[];result=null;
-   setStatus('No se pudo estimar el recorrido: '+error.message,true);
-   renderResults();
+   setStatus('No se pudo actualizar la ruta vial: '+error.message+'. Se conserva la estimación visible.',true);
  }finally{if(request===routingToken)$('btn-route').disabled=false;}
 }
 function recalculate(){
@@ -323,11 +332,12 @@ async function runComparison(){
  try{
   const make=v=>({...state.scenario,viaCenter:v});
   const direct=make(false),center=make(true);
-  const routeDirect=await routeScenario(direct,state.parameters.routing);
-  const routeCenter=await routeScenario(center,state.parameters.routing);
+  const [routeDirect,routeCenter]=await Promise.all([
+   routeScenario(direct,state.parameters.routing),routeScenario(center,state.parameters.routing)
+  ]);
   if(req!==comparisonToken)return;
-  const a=calculateScenario({scenario:direct,parameters:state.parameters,legs:routeDirect});
-  const b=calculateScenario({scenario:center,parameters:state.parameters,legs:routeCenter});
+  const a=calculateScenario({scenario:direct,parameters:state.parameters,legs:addTollCandidates(routeDirect,direct)});
+  const b=calculateScenario({scenario:center,parameters:state.parameters,legs:addTollCandidates(routeCenter,center)});
   comparison={a,b};
   $('comparison').innerHTML=`<table class="compare-table"><thead><tr><th>Indicador</th><th>Directo</th><th>Con acopio</th></tr></thead><tbody><tr><td>Costo total</td><td>${cop(a.totalCOP)}</td><td>${cop(b.totalCOP)}</td></tr><tr><td>COP/kg recibido</td><td>${cop(a.costPerDeliveredKg)}</td><td>${cop(b.costPerDeliveredKg)}</td></tr><tr><td>Kg recibidos</td><td>${num(a.deliveredKg,1)}</td><td>${num(b.deliveredKg,1)}</td></tr><tr><td>Km de ida</td><td>${num(a.distanceKm,1)}</td><td>${num(b.distanceKm,1)}</td></tr></tbody></table><p class="muted">Comparación orientativa. Revisa especialmente peajes por tramo y la ubicación de acopio antes de concluir.</p>`;
  }catch(error){$('comparison').textContent='No se pudo comparar: '+error.message;}
@@ -346,19 +356,22 @@ async function importModel(file){
 }
 function bindControls(){
  bindInput('dispatch',e=>{state.scenario.dispatchKg=+e.target.value;persist();recalculate();});
- bindInput('vehicle',e=>{state.scenario.vehicleId=e.target.value;persist();updateControls();recalculate();});
+ bindInput('vehicle',e=>{state.scenario.vehicleId=e.target.value;persist();routes=addTollCandidates(routes);updateControls();drawRoutes();recalculate();});
  bindInput('preset',e=>{
   const value=e.target.value;
   state.scenario.viaCenter=value==='acopio';state.scenario.channel=value==='direct'?'direct':'wholesale';
   persist();updateControls();renderMarkers();void refreshRoutes();
  });
- bindInput('transport-method',e=>{state.scenario.transportMethod=e.target.value;persist();renderFees();recalculate();});
+ bindInput('transport-method',e=>{state.scenario.transportMethod=e.target.value;persist();updateControls();recalculate();});
+ bindInput('toll-mode',e=>{state.scenario.tollMode=e.target.value;persist();renderFees();drawRoutes();recalculate();});
+ bindInput('quote-includes-tolls',e=>{state.scenario.quoteIncludesTolls=e.target.checked;persist();recalculate();});
  bindInput('empty-return',e=>{state.scenario.includeEmptyReturn=e.target.checked;persist();recalculate();});
  for(const point of ['origin','center','destination']){
    bindInput('name-'+point,e=>{state.scenario.nodes[point].name=e.target.value;persist();renderMarkers();$('map-subtitle').textContent=getPoints().map(n=>n.name.split(' (')[0]).join(' → ');recalculate();});
    $('place-'+point).addEventListener('click',()=>setPlacement(placement===point?null:point));
  }
  $('btn-route').addEventListener('click',()=>void refreshRoutes());
+ $('btn-map-retry').addEventListener('click',()=>void retryMap());
  $('btn-compare').addEventListener('click',()=>void runComparison());
  $('btn-export').addEventListener('click',downloadModel);
  $('file-import').addEventListener('change',e=>{if(e.target.files?.[0])void importModel(e.target.files[0]);e.target.value='';});
@@ -367,8 +380,15 @@ function bindControls(){
   state=cloneDefaults();persist();setPlacement(null);updateControls();renderMarkers();void refreshRoutes();
  });
 }
-function boot(){
- bindControls();updateControls();initializeMap();void refreshRoutes();
+async function boot(){
+ bindControls();updateControls();
+ // El cálculo no depende de que Leaflet se haya podido descargar.
+ void loadTollCatalog();void refreshRoutes();
+ if(await loadLeaflet())initializeMap();
+ else{
+  $('map').innerHTML='<div class="map-error">Mapa no disponible: la biblioteca Leaflet no se pudo descargar. Prueba «Reintentar mapa».</div>';
+  setStatus('Mapa no disponible. Los resultados pueden seguir calculándose, pero se necesita conexión para la vista.',true);
+ }
  console.info('GeoFlujo Agro / fuentes del piloto:',SOURCE_REGISTRY.map(s=>s.id).join(', '));
 }
-boot();
+void boot();
