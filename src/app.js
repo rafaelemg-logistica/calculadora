@@ -1,7 +1,7 @@
 import {cloneDefaults, SOURCE_REGISTRY} from './catalog.js';
 import {calculateScenario} from './engine.js';
 import {routeScenario, lineFallback} from './routing.js';
-import {parseTollCatalog, matchTollsToRoute, tollSelection} from './tolls.js';
+import {parseTollCatalog, matchTollsToRoute, tollSelection, overridesForLeg} from './tolls.js';
 
 const STORAGE_KEY='geoflujo-agro-mvp-v1';
 const $=id=>document.getElementById(id);
@@ -186,7 +186,8 @@ function renderTollMarkers(){
  if(!map||!tollLayer)return;
  tollLayer.clearLayers();
  const seen=new Set();
- const all=routes.flatMap(leg=>tollSelection(leg.tollCandidates??[],state.scenario.tollOverrides).entries);
+ const all=routes.flatMap((leg,index)=>tollSelection(leg.tollCandidates??[],
+  overridesForLeg(leg.tollCandidates??[],state.scenario.tollOverrides,index)).entries);
  for(const toll of all){
    if(seen.has(toll.id))continue;seen.add(toll.id);
    L.circleMarker([toll.lat,toll.lng],{
@@ -271,12 +272,12 @@ function renderFees(){
   const quote=(s.viaCenter?s.centerQuotes:s.quotes)[i]??0;
   const title=count===1?'Origen → destino':i===0?'Origen → acopio':'Acopio → destino';
   const leg=routes[i];
-  const selection=tollSelection(leg?.tollCandidates??[],s.tollOverrides??{});
+  const selection=tollSelection(leg?.tollCandidates??[],overridesForLeg(leg?.tollCandidates??[],s.tollOverrides??{},i));
   const source=leg?.source==='osrm'?'ruta OSRM':'sin ruta vial validada';
   const candidates=auto?(selection.entries.length?selection.entries.map((t,j)=>
    `<div class="toll-candidate">
      <label class="toll-check"><input type="checkbox" id="toll-use-${i}-${j}" ${t.enabled?'checked':''}>
-       <span><strong>${esc(t.name)}</strong><small>${esc(t.sector)} · a ${num(t.distanceM,0)} m de la ruta</small></span>
+       <span><strong>${esc(t.name)}</strong><small>${esc(t.sector)} · ${esc(t.direction||'sentido por verificar')} · a ${num(t.distanceM,0)} m de la ruta</small></span>
      </label>
      <label>Tarifa cat. ${esc(t.category)} (COP)<input id="toll-rate-${i}-${j}" type="number" min="0" step="100" value="${t.rateCOP??''}" placeholder="Sin dato"></label>
    </div>`).join(''):`<p class="toll-warning">${leg?.source==='osrm'?'No se identificaron peajes cercanos; verifica antes de asumir que el tramo no tiene cobros.':'No es posible identificar peajes sobre una ruta estimada. Puedes usar el importe manual.'}</p>`):'';
@@ -298,18 +299,18 @@ function renderFees(){
    const array=s.viaCenter?'centerQuotes':'quotes';
    s[array][i]=Math.max(0,+e.target.value||0);persist();recalculate();
   });
-  const selected=tollSelection(routes[i]?.tollCandidates??[],s.tollOverrides??{}).entries;
+  const selected=tollSelection(routes[i]?.tollCandidates??[],overridesForLeg(routes[i]?.tollCandidates??[],s.tollOverrides??{},i)).entries;
   if(auto)selected.forEach((t,j)=>{
    $('toll-use-'+i+'-'+j).addEventListener('change',e=>{
-    const old=s.tollOverrides?.[t.id]??{};
-    s.tollOverrides={...s.tollOverrides,[t.id]:{...old,enabled:e.target.checked}};
+    const key=i+':'+t.id,old=s.tollOverrides?.[key]??s.tollOverrides?.[t.id]??{};
+    s.tollOverrides={...s.tollOverrides,[key]:{...old,enabled:e.target.checked}};
     persist();renderFees();drawRoutes();recalculate();
    });
    $('toll-rate-'+i+'-'+j).addEventListener('change',e=>{
     const raw=e.target.value.trim(),amount=raw===''?null:Number(raw);
     if(amount!==null&&(!Number.isFinite(amount)||amount<0)){renderFees();return;}
     const old=s.tollOverrides?.[t.id]??{};
-    s.tollOverrides={...s.tollOverrides,[t.id]:{...old,rateCOP:amount}};
+    s.tollOverrides={...s.tollOverrides,[key]:{...old,rateCOP:amount}};
     persist();renderFees();drawRoutes();recalculate();
    });
   });
