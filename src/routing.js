@@ -19,7 +19,7 @@ export async function fetchRoadLeg(a,b,config){
   if(cache.has(key))return cache.get(key);
   let result;
   const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),11000);
+  const timeout=setTimeout(()=>controller.abort(),8500);
   try{
     const coords=`${a.lng},${a.lat};${b.lng},${b.lat}`;
     const url=`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`;
@@ -39,8 +39,6 @@ export async function fetchRoadLeg(a,b,config){
 export async function routeScenario(scenario,config){
  const {origin,center,destination}=scenario.nodes;
  const points=scenario.viaCenter?[origin,center,destination]:[origin,destination];
- const legs=[];
- for(let i=1;i<points.length;i++)legs.push(await fetchRoadLeg(points[i-1],points[i],config));
- return legs;
+ return Promise.all(points.slice(1).map((point,index)=>fetchRoadLeg(points[index],point,config)));
 }
 export function clearRouteCache(){cache.clear();}
