@@ -39,3 +39,6 @@
  .map-title strong{font-size:11px}
  .map-title span{font-size:10px}
 }
+
+.advanced select{height:37px;width:100%;border:1px solid #d3dfd6;border-radius:8px;background:#fff;padding:7px 10px;color:var(--ink);margin-top:5px;font-size:12px}
+.advanced select:focus{outline:2px solid #91c4ab}
