@@ -24,7 +24,7 @@ node --test tests/*.test.js
 - Configuraciones: venta directa, mercado mayorista y mayorista con acopio.
 - Datos de entrada breves: kg despachados, vehículo, canal, nodos y tipo de costo de transporte.
 - Tarifas, mermas y empaques editables en opciones avanzadas.
-- Peajes por tramo ingresados manualmente (no detectados automáticamente).
+- Peajes por tramo: detección espacial de **candidatos** sobre geometrías OSRM a partir de 58 estaciones de referencia de la Región Central. El usuario revisa, modifica o excluye coincidencias y puede optar por importe manual.
 - Resultados: total COP, COP/kg recibido, kg entregados, merma, tiempo/distancia y desglose.
 - Comparación directo vs. con acopio usando los mismos parámetros y coordenadas.
 - Importación/exportación JSON y almacenamiento local, sin cuentas.
@@ -58,7 +58,9 @@ El código se mantiene en `rafaelemg-logistica/calculadora`; la publicación req
 - El empaque tiene costo base de **cero por falta de dato**, por eso se reporta costo **parcial**.
 - No se comprueba vida útil, frío, volumen, categorías de peaje, capacidad real del centro de acopio ni requisitos comerciales.
 - Los nodos iniciales son referencias urbanas y didácticas, **no infraestructura georreferenciada verificada**.
-- El servidor de demostración OSRM y las teselas comunitarias OSM no ofrecen niveles de servicio garantizados; comprobar políticas de uso si se escala a uso intensivo.
+- Las estaciones de peaje y sus tarifas proceden de una copia de trabajo del GeoFlujo anterior (origen INVÍAS), **sin actualización automática de vigencia**. La cercanía a una ruta no acredita el paso, sentido ni cobro efectivo. Al usar cotización integral, marcar «la cotización incluye peajes» evita sumar el importe dos veces.
+- El mapa muestra una geometría provisional al modificar los nodos, posteriormente sustituida por la ruta OSRM cuando está disponible. Tiene reintento de carga y proveedor alternativo de teselas.
+- El servidor de demostración OSRM, las teselas comunitarias OSM y los servicios de respaldo no ofrecen niveles de servicio garantizados; comprobar políticas de uso si se escala a uso intensivo.
 
 ## Licencia
 
