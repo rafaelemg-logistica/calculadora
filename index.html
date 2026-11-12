@@ -8,6 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
   <title>GeoFlujo Agro · Calculadora de recorridos logísticos</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzx1OFaSr6CINPLxMQgRJuYlHU=" crossorigin="" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
   <link rel="stylesheet" href="./src/styles.css" />
 </head>
 <body>
@@ -34,7 +35,11 @@
       <section class="field-section">
         <div class="section-heading"><span class="eyebrow">03 / COSTO DE TRANSPORTE</span></div>
         <label for="transport-method">Forma de calcular el transporte</label><select id="transport-method"><option value="km">Distancia × tarifa COP/km</option><option value="quote">Cotización por viaje (manual)</option></select>
-        <label class="inline-check"><input type="checkbox" id="empty-return"> Incluir retorno vacío en la tarifa por km <span class="help" title="Duplica los kilómetros cobrados para el componente de costo kilométrico; no duplica los peajes ni la cotización.">ⓘ</span></label>
+        <label class="inline-check"><input type="checkbox" id="empty-return"> Incluir retorno vacío en la tarifa por km <span class="help" title="Duplica los kilómetros cobrados; el retorno en peajes se debe verificar aparte.">ⓘ</span></label>
+        <label for="toll-mode">¿Cómo registrar los peajes?</label>
+        <select id="toll-mode"><option value="auto">Identificar en el recorrido (revisables)</option><option value="manual">Ingresar valor por tramo</option></select>
+        <p id="toll-data-status" class="field-note" role="status">Cargando estaciones de peaje de referencia…</p>
+        <label class="inline-check" id="quote-includes-wrap"><input type="checkbox" id="quote-includes-tolls"> Mi cotización de transporte ya incluye peajes <span class="help" title="Si está marcado, se muestran los peajes sugeridos, pero no se suman adicionalmente al costo.">ⓘ</span></label>
         <div class="route-fees" id="route-fees"></div>
       </section>
       <details class="advanced"><summary><span>⚙</span> Parámetros técnicos editables <small>Costos, empaque y pérdidas</small></summary>
@@ -46,8 +51,8 @@
     </aside>
     <section class="map-panel" aria-label="Mapa geográfico del recorrido">
       <div id="map" class="map-canvas" role="application" aria-label="Mapa interactivo de origen, acopio y destino"></div>
-      <div class="map-toolbar"><div class="map-title"><strong>Recorrido vial</strong><span id="map-subtitle">Espinal → Tunja</span></div><button id="btn-route" class="primary">↻ Recalcular ruta</button></div>
-      <div class="map-legend"><span><i class="legend-dot green"></i> Origen</span><span id="center-legend"><i class="legend-dot amber"></i> Acopio</span><span><i class="legend-dot blue"></i> Destino</span><span><i class="legend-line"></i> Ruta vial</span></div>
+      <div class="map-toolbar"><div class="map-title"><strong>Recorrido vial</strong><span id="map-subtitle">Espinal → Tunja</span></div><div class="map-actions"><button id="btn-map-retry" class="secondary-map" title="Recargar la biblioteca y actualizar el tamaño del mapa">Reintentar mapa</button><button id="btn-route" class="primary">↻ Recalcular ruta</button></div></div>
+      <div class="map-legend"><span><i class="legend-dot green"></i> Origen</span><span id="center-legend"><i class="legend-dot amber"></i> Acopio</span><span><i class="legend-dot blue"></i> Destino</span><span><i class="legend-line"></i> Ruta vial</span><span><i class="legend-dot toll"></i> Peaje candidato</span></div>
       <div class="map-status" id="map-status" role="status">Preparando el mapa…</div>
       <div class="map-credit">Ubicaciones de demostración, no instalaciones verificadas. Base cartográfica © OpenStreetMap.</div>
     </section>
@@ -58,6 +63,7 @@
       <div class="kpi-row"><div><small>Merma total</small><strong id="kpi-loss">—</strong></div><div><small>Distancia de ida</small><strong id="kpi-distance">—</strong></div><div><small>Tiempo de viaje (ida)</small><strong id="kpi-time">—</strong></div></div>
       <section class="results-section"><div class="section-heading"><h3>¿En qué se va el costo?</h3><span class="muted">COP</span></div><div id="cost-breakdown"></div></section>
       <section class="results-section"><div class="section-heading"><h3>Recorrido por etapas</h3></div><div id="leg-breakdown"></div></section>
+      <section class="results-section"><div class="section-heading"><h3>Peajes del recorrido</h3></div><div id="toll-breakdown"></div></section>
       <section class="results-section"><div class="section-heading"><h3>Comparar alternativas</h3></div><p class="muted compact">Compara el recorrido directo con uno que incluya el punto de acopio indicado en el mapa. No presupone cuál alternativa conviene.</p><button id="btn-compare" class="compare-button">Comparar directo vs. acopio</button><div id="comparison"></div></section>
       <section class="results-section"><div class="section-heading"><h3>Supuestos por revisar</h3></div><ul id="warnings"></ul></section>
       <footer class="result-footer">Prototipo metodológico independiente. El costo del empaque es inicialmente cero por falta de monetización; validar costos, calidad y requisitos del comprador antes de tomar decisiones.</footer>
