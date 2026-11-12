@@ -236,6 +236,7 @@ async function refreshRoutes(){
  }finally{if(request===routingToken)$('btn-route').disabled=false;}
 }
 function recalculate(){
+ comparisonToken++;
  comparison=null;
  try{result=calculateScenario({scenario:state.scenario,parameters:state.parameters,legs:routes});}
  catch(error){result=null;setStatus(error.message,true);}
@@ -338,7 +339,7 @@ function renderParams(){
    return `<label>${esc(label)}<input type="number" min="0" step="${perc?'0.01':'0.1'}" id="param-${i}" value="${perc?raw*100:raw}"><span class="source-hint">${esc(src)}</span></label>`;
  }).join('');
  const vehicle=p.vehicles.find(v=>v.id===state.scenario.vehicleId);
- $('parameter-fields').innerHTML=fields+`<label>Capacidad vehículo (kg)<input type="number" min="1" step="100" id="v-cap" value="${vehicle.capacityKg}"><span class="source-hint">${vehicle.source}</span></label><label>Tarifa vehículo (COP/km)<input type="number" min="0" step="1" id="v-cost" value="${vehicle.costPerKm}"><span class="source-hint">${vehicle.source}</span></label><label class="inline-check"><input type="checkbox" id="selection" ${state.scenario.applySelection?'checked':''}> Aplicar selección en finca</label>`;
+ $('parameter-fields').innerHTML=fields+`<label>Capacidad vehículo (kg)<input type="number" min="1" step="100" id="v-cap" value="${vehicle.capacityKg}"><span class="source-hint">${vehicle.source}</span></label><label>Tarifa vehículo (COP/km)<input type="number" min="0" step="1" id="v-cost" value="${vehicle.costPerKm}"><span class="source-hint">${vehicle.source}</span></label><label>Categoría de peaje (referencial)<select id="v-toll-category">${['I','II','III','IV','V','VI','VII'].map(cat=>`<option value="${cat}" ${vehicle.tollCategory===cat?'selected':''}>${cat}</option>`).join('')}</select></label><label class="inline-check"><input type="checkbox" id="selection" ${state.scenario.applySelection?'checked':''}> Aplicar selección en finca</label>`;
  PARAM_FIELDS.forEach(([path,,],i)=>{
   $('param-'+i).addEventListener('change',e=>{
    const raw=+e.target.value;const perc=path.startsWith('losses.');
@@ -349,6 +350,10 @@ function renderParams(){
  });
  $('v-cap').addEventListener('change',e=>{if(+e.target.value>0){vehicle.capacityKg=+e.target.value;persist();recalculate();updateControls();}else updateControls();});
  $('v-cost').addEventListener('change',e=>{if(+e.target.value>=0){vehicle.costPerKm=+e.target.value;persist();recalculate();}else updateControls();});
+ $('v-toll-category').addEventListener('change',e=>{
+  vehicle.tollCategory=e.target.value;persist();
+  routes=addTollCandidates(routes);renderFees();drawRoutes();recalculate();
+ });
  $('selection').addEventListener('change',e=>{state.scenario.applySelection=e.target.checked;persist();recalculate();});
 }
 function makeBar(label,value,total,color){const pct=total?Math.min(100,value/total*100):0;return `<div class="cost-line"><div class="cost-head"><span>${esc(label)}</span><strong>${cop(value)}</strong></div><div class="bar-bg"><i style="width:${pct}%;background:${color}"></i></div></div>`;}
