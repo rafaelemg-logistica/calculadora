@@ -352,15 +352,25 @@ function renderParams(){
 }
 function makeBar(label,value,total,color){const pct=total?Math.min(100,value/total*100):0;return `<div class="cost-line"><div class="cost-head"><span>${esc(label)}</span><strong>${cop(value)}</strong></div><div class="bar-bg"><i style="width:${pct}%;background:${color}"></i></div></div>`;}
 function renderResults(){
- if(!result){['kpi-total','kpi-perkg','kpi-received','kpi-loss','kpi-distance','kpi-time'].forEach(id=>$(id).textContent='—');$('cost-breakdown').innerHTML='';$('leg-breakdown').innerHTML='';$('warnings').innerHTML='<li>Define el recorrido para realizar el cálculo.</li>';return;}
+ if(!result){['kpi-total','kpi-perkg','kpi-received','kpi-loss','kpi-distance','kpi-time'].forEach(id=>$(id).textContent='—');$('cost-breakdown').innerHTML='';$('leg-breakdown').innerHTML='';$('toll-breakdown').innerHTML='';$('warnings').innerHTML='<li>Define el recorrido para realizar el cálculo.</li>';return;}
  $('kpi-total').textContent=cop(result.totalCOP);
  $('kpi-perkg').textContent=cop(result.costPerDeliveredKg)+' /kg';
  $('kpi-received').textContent=num(result.deliveredKg,1)+' kg';
  $('kpi-loss').textContent=num(result.logisticsLossKg,1)+' kg ('+pct(result.logisticsLossKg/result.initialKg)+')';
  $('kpi-distance').textContent=num(result.distanceKm,1)+' km';
  $('kpi-time').textContent=num(result.elapsedHours,1)+' h';
- $('cost-breakdown').innerHTML=makeBar('Transporte y peajes',result.transportCOP,result.totalCOP,'#28805b')+makeBar('Manipulación',result.handlingCOP,result.totalCOP,'#d59b32')+makeBar('Empaque',result.packagingCOP,result.totalCOP,'#386cab')+`<p class="muted">Costo por kg despachado: ${cop(result.costPerDispatchedKg)} · ${result.crateCount} canastillas.</p>`;
+ $('cost-breakdown').innerHTML=makeBar('Transporte (sin peajes)',result.freightCOP??result.transportCOP,result.totalCOP,'#28805b')+makeBar('Peajes',result.tollCOP??0,result.totalCOP,'#c18225')+makeBar('Manipulación',result.handlingCOP,result.totalCOP,'#d59b32')+makeBar('Empaque',result.packagingCOP,result.totalCOP,'#386cab')+`<p class="muted">Costo por kg despachado: ${cop(result.costPerDispatchedKg)} · ${result.crateCount} canastillas.</p>`;
  $('leg-breakdown').innerHTML=result.legs.map((leg,i)=>`<div class="leg-card"><div><strong>Tramo ${i+1}: ${esc(getPoints()[i].name.split(' (')[0])} → ${esc(getPoints()[i+1].name.split(' (')[0])}</strong><span class="${leg.source==='osrm'?'tag-osrm':'tag-est'}">${leg.source==='osrm'?'OSRM':'ESTIMADO'}</span></div><p>${num(leg.distanceKm,1)} km · ${num(leg.durationMin/60,2)} h · ${leg.trips} viaje(s) · ${num(leg.inputKg,1)} kg · ${cop(leg.costCOP)}</p></div>`).join('');
+ $('toll-breakdown').innerHTML=result.legs.map(leg=>{
+  const items=leg.detectedTolls??[];
+  const auto=state.scenario.tollMode==='auto';
+  const entries=auto?(items.length?items.map(t=>`<li class="${t.enabled?'':'toll-excluded'}">
+   ${esc(t.name)} · cat. ${esc(t.category)} · ${t.enabled?(t.rateCOP===null?'tarifa pendiente':cop(t.rateCOP)):'excluido'}</li>`).join(''):
+   '<li>Sin coincidencias confirmables para este tramo.</li>'):
+   '<li>Importe manual por viaje; no hay identificación automática aplicada.</li>';
+  return `<div class="toll-result"><strong>Tramo ${leg.index}: ${cop(leg.tollCOP)} de peajes contabilizados</strong>
+   <small>${leg.trips} viaje(s) × ${cop(leg.tollPerTrip)} de referencia por viaje</small><ul>${entries}</ul></div>`;
+ }).join('')+`<p class="muted">Los puntos próximos a la geometría OSRM son candidatos. Verifica cobro, sentido, categoría y vigencia. ${state.scenario.transportMethod==='quote'&&state.scenario.quoteIncludesTolls?'La cotización incluye peajes: no se suman nuevamente.':''}</p>`;
  $('warnings').innerHTML=result.warnings.map(w=>`<li>${esc(w)}</li>`).join('');
  if(!comparison)$('comparison').innerHTML='';
 }
