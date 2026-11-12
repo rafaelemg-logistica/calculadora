@@ -1,6 +1,7 @@
 import {cloneDefaults, SOURCE_REGISTRY} from './catalog.js';
 import {calculateScenario} from './engine.js';
-import {routeScenario} from './routing.js';
+import {routeScenario, lineFallback} from './routing.js';
+import {parseTollCatalog, matchTollsToRoute, tollSelection} from './tolls.js';
 
 const STORAGE_KEY='geoflujo-agro-mvp-v1';
 const $=id=>document.getElementById(id);
@@ -10,18 +11,83 @@ const pct=value=>num(value*100,2)+' %';
 const esc=str=>String(str).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const original=cloneDefaults();
 function restore(){
- try{const stored=JSON.parse(localStorage.getItem(STORAGE_KEY));
-   if(stored?.scenario?.nodes && Array.isArray(stored?.parameters?.vehicles))return stored;
+ try{
+   const stored=JSON.parse(localStorage.getItem(STORAGE_KEY));
+   const nodes=stored?.scenario?.nodes;
+   const validNodes=['origin','center','destination'].every(k=>Number.isFinite(nodes?.[k]?.lat)&&Number.isFinite(nodes?.[k]?.lng)
+     &&Math.abs(nodes[k].lat)<=90&&Math.abs(nodes[k].lng)<=180);
+   if(validNodes && Array.isArray(stored?.parameters?.vehicles)){
+     const initial=cloneDefaults();
+     return {
+       scenario:{...initial.scenario,...stored.scenario,
+         tollMode:stored.scenario.tollMode??'manual',
+         tollOverrides:stored.scenario.tollOverrides??{},
+         quoteIncludesTolls:stored.scenario.quoteIncludesTolls??false},
+       parameters:{...initial.parameters,...stored.parameters,
+         vehicles:stored.parameters.vehicles.map(v=>({
+           ...v,tollCategory:v.tollCategory??initial.parameters.vehicles.find(x=>x.id===v.id)?.tollCategory??'I'
+         }))}
+     };
+   }
  }catch{/* localStorage may be unavailable */}
  return cloneDefaults();
 }
 let state=restore();
-let map,markerLayer,routeLayer;
+let map,markerLayer,routeLayer,tollLayer,baseTiles;
+let mapResizeObserver=null,mapBaseFallback=false,tileErrors=0;
+let tollCatalog=[],tollDataStatus='loading';
 let placement=null;
 let routingToken=0;
 let comparisonToken=0;
 let routes=[],result=null,comparison=null;
 const mapColor={origin:'#28805b',center:'#d59b32',destination:'#386cab'};
+const TOLL_DATA_URL=new URL('../assets/peajes-region-central.geojson',import.meta.url);
+const tollVehicle=()=>state.parameters.vehicles.find(v=>v.id===state.scenario.vehicleId);
+function addTollCandidates(legs,scenario=state.scenario){
+ const vehicle=state.parameters.vehicles.find(v=>v.id===scenario.vehicleId);
+ return legs.map(leg=>({...leg,tollCandidates:matchTollsToRoute(leg,tollCatalog,vehicle?.tollCategory??'I')}));
+}
+function resetMapView(){
+ if(!map)return;
+ map.invalidateSize({pan:false,animate:false});
+ fitToPoints();
+}
+async function loadLeaflet(){
+ if(window.L)return true;
+ const sources=[
+  'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'
+ ];
+ for(const src of sources){
+  const loaded=await new Promise(resolve=>{
+   const element=document.createElement('script');
+   let settled=false;
+   const finish=value=>{if(settled)return;settled=true;clearTimeout(timer);resolve(value);};
+   const timer=setTimeout(()=>finish(false),6000);
+   element.onload=()=>finish(!!window.L);element.onerror=()=>finish(false);
+   element.src=src;element.async=true;document.head.appendChild(element);
+  });
+  if(loaded&&window.L)return true;
+ }
+ return false;
+}
+async function loadTollCatalog(){
+ try{
+  const response=await fetch(TOLL_DATA_URL,{cache:'no-cache'});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  tollCatalog=parseTollCatalog(await response.json());
+  tollDataStatus='ready';
+  $('toll-data-status').textContent=tollCatalog.length+' estaciones de referencia cargadas. Revisa tarifas y sentido de cobro.';
+ }catch(error){
+  tollDataStatus='unavailable';
+  $('toll-data-status').textContent='No se pudo cargar la base de peajes ('+error.message+'). Utiliza peajes manuales.';
+ }
+ if(routes.length){
+  routes=addTollCandidates(routes);
+  drawRoutes();renderFees();recalculate();
+ }
+}
+
 function persist(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch{/* saving is best-effort */}}
 function setStatus(text,warning=false){const box=$('map-status');box.textContent=text;box.classList.toggle('warning',warning);}
 function currentPreset(){return state.scenario.viaCenter?'acopio':state.scenario.channel;}
