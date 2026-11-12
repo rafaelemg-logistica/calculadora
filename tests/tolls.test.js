@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {parseTollCatalog,matchTollsToRoute,tollSelection,distanceToSegmentM} from '../src/tolls.js';
+import {parseTollCatalog,matchTollsToRoute,tollSelection,overridesForLeg,distanceToSegmentM} from '../src/tolls.js';
 
 const catalog={
  type:'FeatureCollection',features:[
@@ -55,4 +55,13 @@ test('Se incorpora la base regional de 58 estaciones sin duplicados',()=>{
  const parsed=parseTollCatalog(json);
  assert.equal(parsed.length,58);
  assert.equal(new Set(parsed.map(x=>x.id)).size,58);
+});
+
+test('Sobrescrituras independientes por tramo',()=>{
+ const tolls=matchTollsToRoute(road,parseTollCatalog(catalog),'IV');
+ const control={'0:T1':{enabled:false},'1:T1':{rateCOP:12500}};
+ const a=tollSelection(tolls,overridesForLeg(tolls,control,0));
+ const b=tollSelection(tolls,overridesForLeg(tolls,control,1));
+ assert.equal(a.perTrip,0);
+ assert.equal(b.perTrip,12500);
 });
