@@ -255,25 +255,63 @@ function updateControls(){
  $('name-destination').value=s.nodes.destination.name;
  $('empty-return').checked=s.includeEmptyReturn;
  $('transport-method').value=s.transportMethod;
+ $('toll-mode').value=s.tollMode??'manual';
+ $('quote-includes-tolls').checked=s.quoteIncludesTolls===true;
+ $('quote-includes-wrap').style.display=s.transportMethod==='quote'?'flex':'none';
  $('map-subtitle').textContent=getPoints().map(n=>n.name.split(' (')[0]).join(' → ');
  renderFees();renderParams();
 }
 function renderFees(){
  const s=state.scenario;
  const count=s.viaCenter?2:1;
- const fees=$('route-fees');
- fees.innerHTML=Array.from({length:count},(_,i)=>{
-  const toll=(s.viaCenter?s.centerTolls:s.tolls)[i]??0;
+ const auto=s.tollMode==='auto';
+ const vehicle=tollVehicle();
+ $('route-fees').innerHTML=Array.from({length:count},(_,i)=>{
+  const manual=(s.viaCenter?s.centerTolls:s.tolls)[i]??0;
   const quote=(s.viaCenter?s.centerQuotes:s.quotes)[i]??0;
   const title=count===1?'Origen → destino':i===0?'Origen → acopio':'Acopio → destino';
-  return `<div class="fee-card"><strong>Tramo ${i+1} · ${title}</strong><div><label for="toll-${i}">Peajes (COP/viaje)</label><input type="number" min="0" step="100" id="toll-${i}" value="${toll}"></div><div><label for="quote-${i}">Cotización COP/viaje</label><input type="number" min="0" step="100" id="quote-${i}" value="${quote}" ${s.transportMethod==='km'?'disabled':''}></div></div>`;
+  const leg=routes[i];
+  const selection=tollSelection(leg?.tollCandidates??[],s.tollOverrides??{});
+  const source=leg?.source==='osrm'?'ruta OSRM':'sin ruta vial validada';
+  const candidates=auto?(selection.entries.length?selection.entries.map((t,j)=>
+   `<div class="toll-candidate">
+     <label class="toll-check"><input type="checkbox" id="toll-use-${i}-${j}" ${t.enabled?'checked':''}>
+       <span><strong>${esc(t.name)}</strong><small>${esc(t.sector)} · a ${num(t.distanceM,0)} m de la ruta</small></span>
+     </label>
+     <label>Tarifa cat. ${esc(t.category)} (COP)<input id="toll-rate-${i}-${j}" type="number" min="0" step="100" value="${t.rateCOP??''}" placeholder="Sin dato"></label>
+   </div>`).join(''):`<p class="toll-warning">${leg?.source==='osrm'?'No se identificaron peajes cercanos; verifica antes de asumir que el tramo no tiene cobros.':'No es posible identificar peajes sobre una ruta estimada. Puedes usar el importe manual.'}</p>`):'';
+  return `<div class="fee-card">
+   <strong>Tramo ${i+1} · ${title}</strong>
+   <p class="toll-totals">${auto?'Peajes sugeridos ('+esc(vehicle?.tollCategory??'?')+'): '+cop(selection.perTrip):'Peajes ingresados: '+cop(manual)} por viaje</p>
+   ${auto?`<p class="toll-source">Fuente: ${esc(source)} · base INVÍAS de referencia, tarifas por revisar</p>`:''}
+   <div class="fee-field"><label for="toll-${i}">Peajes manuales (COP/viaje)</label><input type="number" min="0" step="100" id="toll-${i}" value="${manual}" ${auto?'disabled':''}></div>
+   <div class="fee-field"><label for="quote-${i}">Cotización de transporte (COP/viaje)</label><input type="number" min="0" step="100" id="quote-${i}" value="${quote}" ${s.transportMethod==='km'?'disabled':''}></div>
+   ${auto?`<div class="toll-candidates">${candidates}</div>`:''}
+  </div>`;
  }).join('');
  for(let i=0;i<count;i++){
   $('toll-'+i).addEventListener('change',e=>{
-   const array=s.viaCenter?'centerTolls':'tolls';s[array][i]=Math.max(0,+e.target.value||0);persist();recalculate();
+   const array=s.viaCenter?'centerTolls':'tolls';
+   s[array][i]=Math.max(0,+e.target.value||0);persist();renderFees();recalculate();
   });
   $('quote-'+i).addEventListener('change',e=>{
-   const array=s.viaCenter?'centerQuotes':'quotes';s[array][i]=Math.max(0,+e.target.value||0);persist();recalculate();
+   const array=s.viaCenter?'centerQuotes':'quotes';
+   s[array][i]=Math.max(0,+e.target.value||0);persist();recalculate();
+  });
+  const selected=tollSelection(routes[i]?.tollCandidates??[],s.tollOverrides??{}).entries;
+  if(auto)selected.forEach((t,j)=>{
+   $('toll-use-'+i+'-'+j).addEventListener('change',e=>{
+    const old=s.tollOverrides?.[t.id]??{};
+    s.tollOverrides={...s.tollOverrides,[t.id]:{...old,enabled:e.target.checked}};
+    persist();renderFees();drawRoutes();recalculate();
+   });
+   $('toll-rate-'+i+'-'+j).addEventListener('change',e=>{
+    const raw=e.target.value.trim(),amount=raw===''?null:Number(raw);
+    if(amount!==null&&(!Number.isFinite(amount)||amount<0)){renderFees();return;}
+    const old=s.tollOverrides?.[t.id]??{};
+    s.tollOverrides={...s.tollOverrides,[t.id]:{...old,rateCOP:amount}};
+    persist();renderFees();drawRoutes();recalculate();
+   });
   });
  }
 }
