@@ -18,7 +18,7 @@ Se revisaron el borrador conceptual de escenarios logísticos suministrado y el 
 | Vehículo | catálogo | Usuario | Capacidad en kg, costo por km |
 | Canal | directo o mayorista | Usuario | Selecciona tasa de pérdida de referencia |
 | Método de transporte | km o cotización | Usuario | Cálculos excluyentes |
-| Peajes por viaje | COP | Usuario | Suma explícita por tramo; **no detectados automáticamente** |
+| Peajes por viaje | COP | Sugerencia geográfica o ingreso manual | Los candidatos de peaje sobre ruta OSRM se revisan por categoría; sin ruta real no se infieren peajes |
 
 El usuario puede cambiar en «Parámetros técnicos» las tarifas operativas, las tasas de merma, el empaque, la capacidad del vehículo y la tarifa vial. Cada valor se almacena en el navegador y puede transferirse en un archivo JSON.
 
@@ -51,7 +51,7 @@ Para cada tramo `j` con masa de entrada `Q_j`:
 
 - Viajes: `N_j = MAX(1, CEIL(Q_j / capacidad_vehiculo_kg))`.
 - Tarifa por km: `C_j = N_j × [ D_j × tarifa_km × f_retorno + peajes_j ]` donde `f_retorno = 2` si se solicita retorno vacío y `1` si no.
-- Cotización manual: `C_j = N_j × [ cotizacion_j + peajes_j ]`. La cotización **no se multiplica por retorno**.
+- Cotización manual: `C_j = N_j × [ cotizacion_j + peajes_j ]`, salvo cuando la cotización ya incluye peajes, en cuyo caso `C_j = N_j × cotizacion_j`. La cotización **no se multiplica por retorno**.
 - Empaque: `C_empaque = CEIL(Q0 / kg_por_canastilla) × COP_por_canastilla`, una sola vez.
 - Operaciones: suma de `kg_entrada × COP_por_kg` según la etapa.
 - `C_total = SUMA(C_transporte_j) + SUMA(C_operaciones) + C_empaque`.
@@ -67,7 +67,10 @@ Se toma el tiempo OSRM de ida por tramo y se suman tiempos de ida; también se r
 - Si OSRM no responde, se utiliza `Haversine × 1,25` y velocidad de 42 km/h **como contingencia no vial**, con línea punteada y advertencia visible.
 - El costo por km varía con la distancia de esa ruta calculada, pero una cotización manual no varía automáticamente con la geometría.
 - Las coordenadas iniciales de Espinal, Melgar y Tunja son **referencias urbanas didácticas**, no puntos de instalaciones verificadas.
-- La aplicación no descubre peajes de forma automática; esa función puede incorporarse después, con reglas para sentido, concesión, categoría y vigencia.
+- Los peajes se identifican como **candidatos** próximos a la geometría OSRM, con tolerancia espacial de 160 metros. Se cargan 58 estaciones provenientes de una copia de trabajo anterior de GeoFlujo (base de referencia INVÍAS).
+- La detección es espacial y **no equivale a confirmación de cobro**. Se pueden excluir coincidencias, modificar importes y seleccionar peajes manuales. Una tarifa cero/no reportada se considera **no disponible**, no exención.
+- Si solo existe ruta estimada, no se asocian peajes por proximidad para evitar falsos cobros. Los peajes manuales siguen disponibles.
+- El mapa permite reintentar bibliotecas/teselas y redimensiona al cambiar el espacio disponible. El recorrido provisional no equivale a la vía real.
 
 ## Caso de control del Excel
 
@@ -95,7 +98,7 @@ Las fuentes externas futuras (DANE/SIPSA, SICE-TAC, AGROSAVIA, compradores y ope
 ## Riesgos que siguen abiertos
 
 1. El modelo asume que la totalidad de la masa inicial está disponible para despacho y que la merma comercial ocurre en la entrega (en la realidad puede suceder antes).
-2. Los peajes se introducen manualmente; un peaje de la ruta directa no debe copiarse automáticamente a la primera milla del acopio.
+2. La identificación espacial de peajes debe contrastarse con sentido de cobro, categoría, tarifas vigentes y posibles vías paralelas. Un peaje de la ruta directa no debe copiarse al recorrido con acopio sin verificar su geometría.
 3. Se limita capacidad del vehículo a kilogramos, sin validar volumen, apilamiento, refrigeración ni restricciones por tipo de vía.
 4. Con `N>1` el modelo calcula viajes necesarios y costo total, pero no resuelve su calendarización.
 5. La ruta y el precio de transporte no acreditan factibilidad contractual, sanitaria o de acceso a mercados.
