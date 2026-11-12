@@ -1,4 +1,4 @@
-import {tollSelection} from './tolls.js';
+import {tollSelection, overridesForLeg} from './tolls.js';
 /** Motor determinista, independiente del mapa y de servicios externos. */
 const finiteNonnegative = (value, name) => {
   if (!Number.isFinite(value) || value < 0) throw new Error(`${name}: debe ser un número mayor o igual a cero`);
@@ -54,7 +54,7 @@ export function calculateScenario({scenario, parameters, legs}) {
     const tollValues = scenario.viaCenter ? scenario.centerTolls ?? [] : scenario.tolls ?? [];
     const quoteValues = scenario.viaCenter ? scenario.centerQuotes ?? [] : scenario.quotes ?? [];
     const manualTollPerTrip=finiteNonnegative(+(tollValues[i]??0),`Peajes tramo ${i+1}`);
-    const suggestion=tollSelection(leg.tollCandidates??[],scenario.tollOverrides??{});
+    const suggestion=tollSelection(leg.tollCandidates??[],overridesForLeg(leg.tollCandidates??[],scenario.tollOverrides??{},i));
     const automatic=scenario.tollMode==='auto';
     const tollPerTrip=automatic?suggestion.perTrip:manualTollPerTrip;
     const quotePerTrip=finiteNonnegative(+(quoteValues[i]??0),`Cotización tramo ${i+1}`);
@@ -102,6 +102,10 @@ export function calculateScenario({scenario, parameters, legs}) {
   const marketLossKg=kg*marketLoss;
   kg-=marketLossKg;logisticsLossKg+=marketLossKg;
   ledger.push({name:'Merma en destino (kg)',value:money(marketLossKg),kind:'mass'});
+  if(scenario.tollMode==='auto'){
+    const matches=legResults.flatMap(leg=>leg.detectedTolls.filter(toll=>toll.enabled).map(toll=>toll.id));
+    if(new Set(matches).size!==matches.length)warnings.push('Una misma estación figura en más de un tramo: revisa cada paso para evitar duplicidad de cobro.');
+  }
   const totalCOP=transportCOP+handlingCOP+packagingCOP;
   if(!crateCost)warnings.push('Costo de empaque sin monetizar: el costo total es parcial.');
   if(scenario.includeEmptyReturn)warnings.push('Retorno aproximado: se duplica el costo kilométrico; no la cotización ni los peajes.');
