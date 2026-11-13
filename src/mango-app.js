@@ -555,7 +555,7 @@ function wire(){
  window.addEventListener('message',handleAdvancedMessage);
  $('reset').addEventListener('click',()=>{
   if(!confirm('¿Iniciar una operación nueva? Las respuestas anteriores se reemplazarán.'))return;
-  model=defaults();save();clearRoutes();updateFields();needFit=true;fitMap(true);
+  model={...defaults(),parameters:structuredClone(model.parameters)};save();clearRoutes();updateFields();needFit=true;fitMap(true);
   go(1);showToast('Nueva operación. Ingresa la cantidad de mango.');
  });
  $('download-result').addEventListener('click',()=>{
