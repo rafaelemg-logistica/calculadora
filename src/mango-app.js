@@ -1,4 +1,4 @@
-import {defaults,loadState,storeState,STORAGE_KEY,CHANNEL_NAME} from './config.js';
+import {defaults,loadState,storeState,STORAGE_KEY,CHANNEL_NAME,INSTANCE_ID} from './config.js';
 import {calculateMango} from './mango-engine.js';
 import {fetchRoadLeg,lineFallback} from './routing.js';
 import {parseTollCatalog,matchTollsToRoute,tollSelection,overridesForLeg} from './tolls.js';
@@ -374,7 +374,7 @@ function bind(){
  });
  try{
    const channel=new BroadcastChannel(CHANNEL_NAME);
-   channel.onmessage=()=>{model=loadState();syncFields();routeData=withTolls(routeData??fallbackRoutes());recalculate();renderMapRoutes();};
+   channel.onmessage=e=>{if(e.data?.source===INSTANCE_ID)return;model=loadState();syncFields();routeData=withTolls(routeData??fallbackRoutes());recalculate();renderMapRoutes();};
  }catch{/* Synchronization through storage events is available as fallback. */}
  window.addEventListener('resize',()=>invalidateMap());
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)invalidateMap();});
