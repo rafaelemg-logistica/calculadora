@@ -13,11 +13,24 @@ let map=null,markerLayer=null,routeLayer=null,tollLayer=null,tileLayer=null;
 let mapFit=true,placement=null,tilesHaveErrors=0;
 const mapBox=$('wizard-map');
 const ripenessLabel={verde:'verde maduro',pinton:'pintón',maduro:'maduro'};
-const field=(id,property,onChange=false)=>{
- $(id).addEventListener(onChange?'input':'change',event=>{
-   model.scenario[property]=event.target.type==='checkbox'?event.target.checked:
+const field=(id,property)=>{
+ $(id).addEventListener('change',event=>{
+   const previous=model.scenario[property];
+   const value=event.target.type==='checkbox'?event.target.checked:
      event.target.type==='number'?Number(event.target.value):event.target.value;
-   save();showDynamic();recalculate();
+   if(property==='dispatchKg'&&(!Number.isFinite(value)||value<=0)){
+     event.target.value=previous;
+     showError('Indica una cantidad neta de mango mayor que cero.');
+     return;
+   }
+   model.scenario[property]=value;
+   try{save();}catch(error){
+     model.scenario[property]=previous;event.target.value=previous;showError(error.message);return;
+   }
+   if(property==='vehicleId'&&routeData){
+     routeData=withTolls(routeData);renderMapRoutes();
+   }
+   showError('');showDynamic();recalculate();
  });
 };
 function save(){storeState(model);}
@@ -96,7 +109,7 @@ function go(target){
 function validateWizard(){
  const s=model.scenario;
  if(!Number.isFinite(s.dispatchKg)||s.dispatchKg<=0)return 'Indica una cantidad neta mayor que cero.';
- if(s.storageEnabled&&(!Number.isFinite(s.storageHours)||s.storageHours<0))return 'Revisa las horas de almacenamiento.';
+ if(s.storageEnabled&&(!Number.isFinite(s.storageHours)||s.storageHours<=0))return 'Indica la duración del almacenamiento en horas.';
  if(!Number.isFinite(s.returnShare)||s.returnShare<0||s.returnShare>1)return 'El retorno de empaques debe estar entre 0 y 100 %.';
  return '';
 }
@@ -310,7 +323,7 @@ function recalculate(){
  }
 }
 function bind(){
- field('dispatchKg','dispatchKg',true);
+ field('dispatchKg','dispatchKg');
  field('ripeness','ripeness');
  field('packaging','packagingId');
  field('packagingIncluded','packagingIncluded');
