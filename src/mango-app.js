@@ -499,7 +499,8 @@ function handleAdvancedMessage(event){
   if(alternatives.length&&alternatives[0].source==='estimate'&&bothPoints()){
    const [a,b]=[syncedCoords('origin'),syncedCoords('destination')];
    alternatives=[lineFallback(a,b,model.parameters.transport)];
-   returnLeg=lineFallback(b,a,model.parameters.transport);
+   if(returnLeg?.source==='estimate')
+     returnLeg=lineFallback(b,a,model.parameters.transport);
   }
   renderMapRoutes();renderRouteCards();recalculate();
   closeAdvanced();
