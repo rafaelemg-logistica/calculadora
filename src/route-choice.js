@@ -1,7 +1,7 @@
 import {calculateMango} from './mango-engine.js';
 import {matchTollsToRoute} from './tolls.js';
-import {readyToCalculate} from './config.js';
-import {hasPoint} from './routing.js';
+import {readyToCalculate} from './config.js?v=2';
+import {hasPoint} from './routing.js?v=2';
 
 export function routeKey(a,b){
  if(!hasPoint(a)||!hasPoint(b))return null;
