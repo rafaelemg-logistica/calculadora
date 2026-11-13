@@ -1,0 +1,38 @@
+.advanced-layout{max-width:1500px;margin:0 auto;padding:24px 3%;display:grid;grid-template-columns:235px minmax(0,1fr);gap:28px;align-items:start}
+.advanced-nav{position:sticky;top:20px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:5px}
+.advanced-nav a{font-size:12px;color:#416953;text-decoration:none;padding:10px;border-radius:8px;font-weight:700}
+.advanced-nav a:hover{background:#edf6ef}
+.advanced-main{max-width:1020px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.advanced-intro{padding:12px 4px 10px}.advanced-intro h1{font-size:30px;letter-spacing:-1px;margin:7px 0}.advanced-intro p{max-width:720px;color:var(--sub);font-size:13px;line-height:1.7}
+.settings-card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:24px;scroll-margin-top:18px;box-shadow:var(--shadow)}
+.settings-card h2{margin:0;font-size:19px;letter-spacing:-.3px}.settings-card h3{font-size:14px;margin:26px 0 7px}
+.settings-card>p{color:var(--sub);font-size:12px;max-width:850px;line-height:1.65;margin:9px 0 19px}
+.settings-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.setting-field{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:11px;font-weight:750;color:#577262}
+.setting-field input,.setting-field select{height:38px;background:#fff;padding:8px 10px;border:1px solid #d1ded3;border-radius:8px;color:#294636}
+.setting-field input:focus,.setting-field select:focus{outline:2px solid #96c9a9}
+.setting-field small{font-size:10px;font-weight:400;color:#84978a}
+.setting-field.setting-check{flex-direction:row;align-items:center;background:#f4f8f4;padding:10px;border-radius:9px;gap:9px;min-height:50px}
+.setting-check input{width:17px;height:17px;flex:none;accent-color:var(--green)}
+.setting-check span{display:block;font-size:11px}
+.catalog-item{border:1px solid #dce7dd;border-radius:10px;margin-top:12px;padding:15px}
+.catalog-item summary{font-weight:800;cursor:pointer;font-size:13px}
+.catalog-item .settings-grid{margin-top:16px}
+.catalog-item small{color:#718473;font-weight:500}
+.catalog-ref{margin:13px 0 0;color:#869589;font-size:10px}
+.inline-message{font-size:11px;color:#9b6331;margin-left:10px}
+.notice{background:#f0f6f0;border:1px solid #dcebdc;border-radius:9px;padding:11px 14px;font-size:12px;color:#52745d;margin:17px 0}
+.toll-group{border:1px solid #dbe5db;border-radius:11px;padding:14px;margin:13px 0}.toll-group h3{margin:0 0 13px}
+.toll-editor-row{display:grid;grid-template-columns:minmax(0,1fr) 170px;align-items:center;gap:14px;border-top:1px solid #edf1ed;padding:10px 0}
+.toll-editor-row .setting-check{display:flex;gap:10px;align-items:start}
+.toll-editor-row small{font-size:10px;color:#728877;display:block;margin-top:4px;font-weight:400}
+.empty-tolls{color:#8a7a57;font-size:12px;background:#fff7e9;padding:13px;border-radius:8px}
+.source-row{display:grid;grid-template-columns:200px 1fr 150px;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:12px}
+.source-row strong{font-size:12px}.source-row span{color:#607665}.source-row small{font-size:10px;color:#6d8f75}
+.source-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.source-links a{color:#21734e;text-decoration:none;font-size:12px;font-weight:750}
+.settings-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.file-label{display:inline-flex;cursor:pointer}
+.danger-soft{border:1px solid #e7c9bf;color:#8b5239;background:#fff5f1;border-radius:9px;padding:10px 13px;font-weight:700;font-size:12px}
+.save-status{font-size:11px;color:#568163}
+@media(max-width:1050px){.advanced-layout{grid-template-columns:180px minmax(0,1fr);gap:16px}.settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.source-row{grid-template-columns:150px 1fr}}
+@media(max-width:690px){.advanced-layout{display:block;padding:13px}.advanced-nav{position:static;flex-direction:row;overflow-x:auto;white-space:nowrap;gap:3px;padding:9px;margin-bottom:13px}.advanced-nav a{font-size:11px}.settings-card{padding:17px}.settings-grid{grid-template-columns:1fr}.source-row{display:block}.source-row>*{display:block;padding:4px 0}.toll-editor-row{grid-template-columns:1fr 120px;gap:8px}.save-status{display:none}}
