@@ -49,7 +49,7 @@ test('Restricción de apilamiento puede dominar peso y volumen',()=>{
  assert.equal(run(s).trucks,Math.ceil(275/45));
 });
 test('Una caja incompatible con el vehículo se rechaza sin producir costos falsos',()=>{
- const s=setup();s.model.parameters.packaging[0].widthM=5;
+ const s=setup();s.model.parameters.packaging[0].widthM=9;
  assert.throws(()=>run(s),/no admite una unidad/);
 });
 test('Al crecer la distancia aumenta el costo total; puede reducirse el COP/km promedio',()=>{
