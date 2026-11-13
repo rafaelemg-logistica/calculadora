@@ -80,9 +80,9 @@ test('Aplicar parámetros avanzados recalcula sin alterar origen, destino ni rut
 });
 test('No se aceptan porcentajes o capacidades incoherentes en parámetros avanzados',()=>{
  const p=defaults().parameters;
- p.terrainMix={flat:.9,rolling:.2,mountain:.1};
+ p.transport.terrainMix={flat:.9,rolling:.2,mountain:.1};
  assert.throws(()=>validateParameters(p),/sumar 100/);
- p.terrainMix={flat:.5,rolling:.3,mountain:.2};
+ p.transport.terrainMix={flat:.5,rolling:.3,mountain:.2};
  p.packaging[0].widthM=0;
  assert.throws(()=>validateParameters(p),/mayor que cero/);
 });
