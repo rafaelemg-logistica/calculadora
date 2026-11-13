@@ -1,4 +1,4 @@
-import {defaults,loadState,storeState,STORAGE_KEY,CHANNEL_NAME,PARAMETER_SOURCES,validateState} from './config.js';
+import {defaults,loadState,storeState,STORAGE_KEY,CHANNEL_NAME,INSTANCE_ID,PARAMETER_SOURCES,validateState} from './config.js';
 import {fetchRoadLeg} from './routing.js';
 import {parseTollCatalog,matchTollsToRoute,tollSelection,overridesForLeg} from './tolls.js';
 
@@ -222,7 +222,7 @@ function bind(){
   if(e.key===STORAGE_KEY){state=loadState();renderAll();void refreshTolls();}
  });
  try{const channel=new BroadcastChannel(CHANNEL_NAME);
-  channel.onmessage=()=>{state=loadState();renderAll();};
+  channel.onmessage=e=>{if(e.data?.source===INSTANCE_ID)return;state=loadState();renderAll();};
  }catch{/* Eventos storage como alternativa. */}
 }
 renderAll();bind();void refreshTolls();
