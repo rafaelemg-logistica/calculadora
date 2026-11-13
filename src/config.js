@@ -105,7 +105,7 @@ export function storeState(state){
  if(!validateState(state))throw new Error('La configuración no es válida.');
  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
  catch{/* La aplicación puede funcionar sin persistencia. */}
- try{new BroadcastChannel(CHANNEL_NAME).postMessage('changed');}
+ try{const channel=new BroadcastChannel(CHANNEL_NAME);channel.postMessage('changed');channel.close();}
  catch{/* Algunos navegadores no disponen de este canal. */}
 }
 export function resetState(){const model=defaults();storeState(model);return model;}
