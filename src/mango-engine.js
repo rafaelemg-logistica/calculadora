@@ -123,7 +123,7 @@ export function calculateMango(model,routes){
  let chargedOut=unquotedOut, chargedReturn=s.returnIncluded?0:unquotedReturn;
  const quote=t.allowQuote?assertNonnegative(t.quoteCOP,'Cotización de transporte'):null;
  if(t.allowQuote){
-   chargedOut=quote+(!t.quoteIncludesTolls?tollOutCOP:0);
+   chargedOut=trucks*quote+(!t.quoteIncludesTolls?tollOutCOP:0);
    chargedReturn=(t.quoteIncludesReturn||s.returnIncluded)?0:unquotedReturn;
  }
  const billedOutboundTolls=t.allowQuote&&t.quoteIncludesTolls?0:tollOutCOP;
