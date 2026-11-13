@@ -94,7 +94,7 @@ export function validateState(s){
   &&Number.isFinite(s.scenario?.dispatchKg)&&s.scenario.dispatchKg>0
   &&validCoordinates(s.scenario?.origin)&&validCoordinates(s.scenario?.destination)
   &&Array.isArray(s.parameters?.vehicles)&&Array.isArray(s.parameters?.packaging)
-  &&s.parameters?.transport&&s.parameters?.product;
+  &&!!s.parameters?.transport&&!!s.parameters?.product;
 }
 export function loadState(){
  try{const data=JSON.parse(localStorage.getItem(STORAGE_KEY));if(validateState(data))return data;}
