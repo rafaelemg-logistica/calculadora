@@ -1,4 +1,4 @@
-import {defaults,loadState,storeState,STORAGE_KEY,CHANNEL_NAME,INSTANCE_ID,PARAMETER_SOURCES,validateState} from './config.js';
+import {defaults,loadState,storeState,STORAGE_KEY,CHANNEL_NAME,INSTANCE_ID,PARAMETER_SOURCES,validateState,validateParameters,validCoordinates} from './config.js';
 import {fetchRoadLeg} from './routing.js';
 import {parseTollCatalog,matchTollsToRoute,tollSelection,overridesForLeg} from './tolls.js';
 
@@ -6,12 +6,29 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=v=>Number(v).toLocaleString('es-CO',{maximumFractionDigits:0});
 let state=loadState(),matched=[[],[]],catalog=[],request=0;
+const embedded=new URLSearchParams(location.search).get('embed')==='1';
+let suppliedRoutes=null,dirty=false;
+document.body.classList.toggle('embedded',embedded);
 let statusTimer;
 function status(text){
  $('save-status').textContent=text;clearTimeout(statusTimer);
  statusTimer=setTimeout(()=>$('save-status').textContent='Valores sincronizados',3500);
 }
-function save(){try{storeState(state);status('Cambios guardados');}catch(e){status(e.message);}}
+function save(){dirty=true;status('Cambios sin aplicar');}
+function applySettings(){
+ try{
+   validateParameters(state.parameters);
+   if(embedded){
+     window.parent.postMessage({type:'geoflujo:apply-parameters',
+       parameters:structuredClone(state.parameters)},location.origin);
+   }else{
+     const latest=loadState();
+     storeState({...latest,parameters:structuredClone(state.parameters)});
+     state=loadState();
+   }
+   dirty=false;status('Parámetros aplicados correctamente');
+ }catch(error){status('No se aplicaron: '+error.message);document.getElementById('apply-message').textContent=error.message;}
+}
 function getPath(path){return path.split('.').reduce((obj,key)=>obj?.[key],state.parameters);}
 function setPath(path,value){
  const keys=path.split('.'),last=keys.pop(),target=keys.reduce((o,k)=>o[k],state.parameters);
@@ -144,11 +161,18 @@ async function refreshTolls(){
    catalog=parseTollCatalog(await resp.json());
   }
   const {origin,destination,vehicleId}=state.scenario;
-  const routes=await Promise.all([
-   fetchRoadLeg(origin,destination,state.parameters.transport),
-   fetchRoadLeg(destination,origin,state.parameters.transport)
-  ]);
+  const routes=suppliedRoutes??(
+    validCoordinates(origin)&&validCoordinates(destination)?
+     await Promise.all([
+       fetchRoadLeg(origin,destination,state.parameters.transport),
+       fetchRoadLeg(destination,origin,state.parameters.transport)
+     ]):null
+  );
   if(id!==request)return;
+  if(!routes||routes.some(x=>!x)){
+    $('toll-editor-status').textContent='Selecciona origen y destino en el mapa para identificar peajes.';
+    matched=[[],[]];renderTolls();return;
+  }
   const v=state.parameters.vehicles.find(item=>item.id===vehicleId);
   matched=routes.map(leg=>matchTollsToRoute(leg,catalog,v?.tollCategory??'I'));
   $('toll-editor-status').textContent=routes.some(r=>r.source!=='osrm')?
@@ -206,6 +230,15 @@ async function importConfig(file){
 }
 function bind(){
  document.addEventListener('change',parameterChanged);
+ $('apply-settings').addEventListener('click',applySettings);
+ window.addEventListener('message',event=>{
+  if(!embedded||event.origin!==location.origin||event.source!==window.parent)return;
+  if(event.data?.type==='geoflujo:routes'){
+    suppliedRoutes=event.data.routes??null;
+    if(event.data.scenario)state.scenario=event.data.scenario;
+    void refreshTolls();
+  }
+ });
  $('save-terrain').addEventListener('click',saveTerrain);
  $('toll-editor').addEventListener('change',tollChanged);
  $('refresh-tolls').addEventListener('click',()=>void refreshTolls());
@@ -219,10 +252,10 @@ function bind(){
   state.parameters=defaults().parameters;save();renderAll();void refreshTolls();
  });
  window.addEventListener('storage',e=>{
-  if(e.key===STORAGE_KEY){state=loadState();renderAll();void refreshTolls();}
+  if(e.key===STORAGE_KEY&&!dirty){state=loadState();renderAll();void refreshTolls();}
  });
  try{const channel=new BroadcastChannel(CHANNEL_NAME);
-  channel.onmessage=e=>{if(e.data?.source===INSTANCE_ID)return;state=loadState();renderAll();};
+  channel.onmessage=e=>{if(e.data?.source===INSTANCE_ID||dirty)return;state=loadState();renderAll();};
  }catch{/* Eventos storage como alternativa. */}
 }
 renderAll();bind();void refreshTolls();
