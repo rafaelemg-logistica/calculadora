@@ -13,7 +13,7 @@ export const DEFAULTS = {
     packagingId: 'canastilla',
     packagingIncluded: true,
     storageEnabled: false,
-    storageHours: 0,
+    storageHours: 24,
     vehicleId: 'C2',
     preservation: 'ambiente',
     returnPackaging: true,
