@@ -105,11 +105,19 @@ test('Peajes ida y regreso se cobran por vehículo en modo manual',()=>{
  assert.equal(r.outboundTollCOP,50000);
  assert.equal(r.returnTollCOP,40000);
 });
-test('Costo de regreso atribuido a cero si ya está incluido en servicio',()=>{
+test('El costo generalizado conserva el regreso aun cuando el contrato indique tarifa integral',()=>{
  const s=setup();s.model.scenario.returnIncluded=true;
  const r=run(s);
- assert.equal(r.returnAttributedCOP,0);
+ assert.equal(r.returnAttributedCOP,r.returnCostPhysicalCOP);
  assert.ok(r.returnCostPhysicalCOP>0);
+});
+test('Una cotización integral no vuelve a sumar el regreso',()=>{
+ const s=setup();s.model.scenario.returnIncluded=true;
+ s.model.parameters.transport.allowQuote=true;
+ s.model.parameters.transport.quoteCOP=900000;
+ const r=run(s);
+ assert.equal(r.returnAttributedCOP,0);
+ assert.equal(r.outwardAttributedCOP,900000);
 });
 test('Almacenamiento opcional agrega costo por estibas y días facturables',()=>{
  const s=setup(),simple=run(s);
