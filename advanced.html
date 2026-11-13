@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#174e40">
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./src/mango.css?v=1">
+  <link rel="stylesheet" href="./src/advanced.css?v=1">
+  <title>Parámetros avanzados · GeoFlujo Mango</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark">G<span>●</span></div>
+      <div><strong>GeoFlujo <em>Mango</em></strong><small>Configuración del modelo de cálculo</small></div>
+    </div>
+    <div class="top-actions"><a class="advanced-link" href="./" target="_blank" rel="noopener">↗ Abrir calculadora</a>
+      <span id="save-status" class="save-status" role="status">Valores sincronizados</span></div>
+  </header>
+  <div class="advanced-layout">
+    <nav class="advanced-nav" aria-label="Secciones">
+      <span class="eyebrow">PARÁMETROS</span>
+      <a href="#mango">Mango y rechazo</a>
+      <a href="#empaques">Empaques</a>
+      <a href="#operaciones">Operaciones</a>
+      <a href="#vehiculos">Vehículos</a>
+      <a href="#transporte">Transporte y vías</a>
+      <a href="#peajes">Peajes</a>
+      <a href="#fuentes">Fuentes de cálculo</a>
+    </nav>
+    <main class="advanced-main">
+      <div class="advanced-intro">
+        <span class="eyebrow">AJUSTES TÉCNICOS</span>
+        <h1>Parámetros avanzados</h1>
+        <p>Modifica costos, capacidades, conservación y reglas del recorrido. Los cambios se guardan en este navegador y se reflejan en la calculadora. Cada valor distingue su fuente técnica de las estimaciones del modelo.</p>
+      </div>
+      <section class="settings-card" id="mango"><h2>Mango y rechazo en destino</h2><p>El rechazo se aplica al mango recibido después del transporte; no existen pérdidas de masa en origen.</p><div class="settings-grid" id="fields-mango"></div></section>
+      <section class="settings-card" id="empaques"><h2>Empaques, geometría y logística inversa</h2><p>La capacidad del vehículo se limita simultáneamente por peso, volumen, dimensiones y apilamiento. Los empaques retornables se costean por uso cuando su adquisición no está incluida en otro precio.</p><div id="fields-packaging"></div></section>
+      <section class="settings-card" id="operaciones"><h2>Operaciones en nodos</h2><p>Separamos el costo físico de cargue/descargue del tiempo durante el cual el vehículo está comprometido.</p><div class="settings-grid" id="fields-nodes"></div></section>
+      <section class="settings-card" id="vehiculos"><h2>Vehículos y refrigeración</h2><p>Las capacidades son útiles; la categoría de peaje es editable y debe corresponder a la configuración que efectivamente circula. Los consumos de refrigeración son referencias ajustables por carrocería.</p><div id="fields-vehicles"></div></section>
+      <section class="settings-card" id="transporte"><h2>Costos del transporte y condiciones viales</h2><p>El modelo calcula combustible, mantenimiento, llantas, lubricantes, costos fijos del servicio y costo del tiempo. La distribución porcentual se deriva del importe calculado, en lugar de aplicar descuentos adicionales por distancia.</p>
+        <div class="settings-grid" id="fields-transport"></div>
+        <h3>Distribución de kilómetros por terreno</h3>
+        <p>Este perfil es una aproximación configurable, no una clasificación automática extraída de OSRM. La suma debe ser exactamente 100 %.</p>
+        <div class="settings-grid" id="fields-terrain"></div>
+        <button id="save-terrain" class="subtle">Aplicar perfil vial</button><span id="terrain-message" class="inline-message"></span>
+        <h3>Alternativa de cotización comercial</h3>
+        <p>Cuando se activa, la cotización sustituye al costo calculado de ida. Los conceptos que ya contiene no se cobran de nuevo.</p>
+        <div class="settings-grid" id="fields-quote"></div>
+      </section>
+      <section class="settings-card" id="peajes"><h2>Peajes del recorrido</h2><p>La identificación geográfica determina posibles estaciones próximas a la ruta. No confirma cobro efectivo, sentido ni vigencia de tarifa: revisa cada coincidencia o introduce los importes por recorrido.</p>
+        <div class="settings-grid" id="fields-tolls"></div>
+        <div id="toll-editor-status" class="notice"></div>
+        <div id="toll-editor"></div>
+        <button id="refresh-tolls" class="subtle">↻ Actualizar estaciones según el mapa</button>
+      </section>
+      <section class="settings-card" id="fuentes"><h2>Procedencia de los parámetros</h2><p>Se presentan los datos documentales y las estimaciones técnicas por separado. El costo de operación propio es una aproximación del servicio logístico y no constituye el resultado oficial SICE-TAC.</p>
+        <div id="sources-list"></div>
+        <div class="source-links">
+          <a href="https://sicetac.mintransporte.gov.co/" target="_blank" rel="noopener">SICE-TAC · Ministerio de Transporte ↗</a>
+          <a href="https://postharvest.ucdavis.edu/" target="_blank" rel="noopener">UC Davis · Pos-cosecha ↗</a>
+          <a href="https://www.agrosavia.co/" target="_blank" rel="noopener">AGROSAVIA ↗</a>
+        </div>
+      </section>
+      <section class="settings-card settings-actions">
+        <button id="export-settings" class="subtle">Exportar configuración JSON</button>
+        <label class="subtle file-label">Importar configuración JSON<input id="import-settings" type="file" hidden accept=".json,application/json"></label>
+        <button id="restore-settings" class="danger-soft">Restaurar parámetros de referencia</button>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="./src/advanced.js?v=1"></script>
+</body>
+</html>

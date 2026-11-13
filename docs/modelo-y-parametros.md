@@ -1,105 +1,78 @@
-# Modelo de cálculo · GeoFlujo Agro
+# GeoFlujo Mango — modelo de cálculo
 
-## Propósito y límites
+## Alcance
 
-La calculadora compara configuraciones de transporte y manipulación **para un único producto fresco** (Mango Tommy en el piloto). No calcula precios de venta, utilidades, calidad físico-química, vida útil restante, capacidad de centros de acopio ni cumplimiento sanitario o fitosanitario. No es un optimizador de rutas ni representa por ahora una red multiproductor. El objetivo es **costear recorridos definidos por el usuario**.
+La unidad de análisis es un despacho de **mango fresco Tommy Atkins**, listo para salir del origen. Se distingue la cantidad neta de mango del peso de las unidades de empaque. La operación contiene dos nodos (origen y destino), un arco de ida y otro de regreso de toda la flota. El rechazo por deterioro de transporte se registra al recibir el producto, **sin pérdidas de masa en origen**.
 
-Se revisaron el borrador conceptual de escenarios logísticos suministrado y el libro `Modelo_Inicial_Calculadora_Escenarios_Logisticos_Agropecuarios_revision(1).xlsx`. El libro de referencia usa 9 pestañas (`00_Tablero`, `01_Guia`, `02_Productos`, `03_Estados_Mercados`, `04_Parametros`, `05_Escenarios`, `06_Calculo`, `07_Resultados`, `08_Fuentes`). **El MVP no reproduce toda la complejidad del libro**.
+## Entradas y restricciones físicas
 
-## Datos solicitados (mínimos)
+- Q0: kilogramos netos despachados.
+- q: capacidad neta en kg de cada empaque.
+- N = techo(Q0/q): unidades enteras de empaque.
+- P: peso bruto = Q0 + N × tara por empaque.
+- V: volumen exterior = N × largo × ancho × alto.
+- La capacidad en empaques por vehículo es el mínimo entre: límite por peso para empaque lleno; límite por volumen útil; posiciones de piso enteras por orientación, multiplicadas por capas permitidas por altura y apilamiento.
+- Vehículos = techo(N / empaques admitidos por vehículo). No se supone fraccionamiento físico de empaques.
 
-| Campo | Unidad | Quién lo ingresa | Cómo se usa |
-|---|---|---|---|
-| Producto | Catálogo | Selección (piloto fijo) | Selecciona los parámetros pertinentes |
-| Cantidad despachada | kg | Usuario | Masa inicial y tamaño de flota |
-| Origen | coordenadas | Mapa o arrastre | Extremo inicial del trazado |
-| Destino | coordenadas | Mapa o arrastre | Extremo final del trazado |
-| Centro intermedio | coordenadas | Mapa, opcional | Añade un tramo y operaciones |
-| Vehículo | catálogo | Usuario | Capacidad en kg, costo por km |
-| Canal | directo o mayorista | Usuario | Selecciona tasa de pérdida de referencia |
-| Método de transporte | km o cotización | Usuario | Cálculos excluyentes |
-| Peajes por viaje | COP | Sugerencia geográfica o ingreso manual | Los candidatos de peaje sobre ruta OSRM se revisan por categoría; sin ruta real no se infieren peajes |
+La cantidad de vehículos en el viaje de regreso es **idéntica** a la de ida. Los embalajes recuperados se distribuyen entre ellos. Si los empaques no son retornables o el usuario elige no recuperarlos, los vehículos siguen regresando.
 
-El usuario puede cambiar en «Parámetros técnicos» las tarifas operativas, las tasas de merma, el empaque, la capacidad del vehículo y la tarifa vial. Cada valor se almacena en el navegador y puede transferirse en un archivo JSON.
+## Costos en nodos
 
-## Secuencia calculada
+- Cargue obligatorio = Q0 × tarifa de cargue COP/kg.
+- Descargue obligatorio = Q0 × tarifa de descargue COP/kg. Se descarga también la fruta que posteriormente será rechazada.
+- Empaque: si su compra está incluida en el precio de la fruta, no se añade de nuevo como adquisición; si es retornable y la compra se costea, se reparte su precio entre los usos estimados. El lavado de los empaques retornados y reposición esperada son conceptos independientes, de acuerdo con la parametrización.
+- Almacenamiento opcional = posiciones de estiba × tarifa mensual × días facturables / días de facturación por mes. La aproximación de posiciones se basa en huella exterior y altura de apilamiento.
 
-**Sin acopio:**
+## Arcos de ida y regreso
 
-1. Despacho inicial `Q0`.
-2. Selección/acondicionamiento opcional a `Q0 × tarifa_sel`.
-3. Cargue a `Q0 × tarifa_cargue`.
-4. Transporte con `Q0` y número de viajes por capacidad del vehículo.
-5. Descargue en destino a `Q0 × tarifa_descargue`.
-6. Aplicación de merma comercial `m_m` al recibir: `Q_recibida = Q0 × (1 - m_m)`.
+El servicio de rutas OSRM devuelve geometrias, km y minutos. Al fallar se calcula una aproximación geodésica explícita. Una estimación recta no acredita la vía ni identifica peajes.
 
-**Con acopio:**
+El costo físico por vehículo considera:
 
-1. Selección y cargue inicial de `Q0`.
-2. Transporte origen → acopio con `Q0`.
-3. Descargue en acopio y consolidación, cada uno valorado sobre `Q0`.
-4. Merma de acopio: `Q1 = Q0 × (1 - m_a)`.
-5. Cargue de `Q1` y transporte acopio → destino con `Q1`.
-6. Descargue en destino sobre `Q1`.
-7. Merma de mercado: `Q_recibida = Q1 × (1 - m_m)`.
+1. Combustible calculado con precio ACPM, kilómetros ponderados por porcentaje de terreno plano/ondulado/montañoso, rendimientos por terreno, superficie y factor del vehículo.
+2. Mantenimiento y repuestos por km.
+3. Llantas por km.
+4. Insumos y lubricantes por km.
+5. Importe fijo por disponer el vehículo para la operación completa.
+6. Costo por las horas de manejo, cargue, descargue y espera que comprometen el vehículo.
+7. Equipo de refrigeración, cuando se usa, durante el recorrido de ida, espera y preenfriamiento.
+8. Peajes por sentido y categoría.
 
-Por tanto: `merma_total = Q0 - Q_recibida`, distribuida explícitamente entre acopio y recepción final. El motor verifica `Q0 = recibido + merma_total`.
+Se diferencia el combustible de ida con carga de la condición de retorno (vacío o con empaques). Los demás importes se distribuyen por segmento de ida y regreso sin duplicar el cargo fijo por servicio.
 
-## Fórmulas
+El modelo de costos **no aplica descuentos adicionales por distancia**. El costo promedio por km puede bajar porque se distribuye el costo fijo de servicio entre más kilómetros. La función analítica de sensibilidad es F + v × D, o su versión normalizada C(D)/C0 = beta + (1 − beta) × D/D0.
 
-Para cada tramo `j` con masa de entrada `Q_j`:
+El perfil porcentual del terreno se modifica en la pestaña avanzada y debe sumar 100 %. **No es una inferencia automática de superficie o topografía a partir de la ruta OSRM.** El análisis vial clasifica los costos por el perfil configurado, sin presentar las condiciones como verificadas.
 
-- Viajes: `N_j = MAX(1, CEIL(Q_j / capacidad_vehiculo_kg))`.
-- Tarifa por km: `C_j = N_j × [ D_j × tarifa_km × f_retorno + peajes_j ]` donde `f_retorno = 2` si se solicita retorno vacío y `1` si no.
-- Cotización manual: `C_j = N_j × [ cotizacion_j + peajes_j ]`, salvo cuando la cotización ya incluye peajes, en cuyo caso `C_j = N_j × cotizacion_j`. La cotización **no se multiplica por retorno**.
-- Empaque: `C_empaque = CEIL(Q0 / kg_por_canastilla) × COP_por_canastilla`, una sola vez.
-- Operaciones: suma de `kg_entrada × COP_por_kg` según la etapa.
-- `C_total = SUMA(C_transporte_j) + SUMA(C_operaciones) + C_empaque`.
-- `C_kg_recibido = C_total / Q_recibida`.
-- `C_kg_despachado = C_total / Q0`.
+## Peajes
 
-Se toma el tiempo OSRM de ida por tramo y se suman tiempos de ida; también se registra tiempo-vehículo `SUMA(trips × horas tramo)`. **No se calculan tiempos de carga ni cronogramas de ventanas comerciales todavía**.
+Se cargan estaciones de referencia regional y se identifican por proximidad a la geometría vial OSRM. Se muestran como candidatos, no como cobros confirmados. Las tarifas y el sentido deben revisarse. El usuario puede editar tarifas, excluir peajes en ida o regreso y sustituir su suma por un importe manual.
 
-## Ruta geográfica
+Si el precio comercial del transporte ya incorpora peajes, estos no se añaden de nuevo. Si incluye regreso, tampoco se añade otro costo atribuible de vuelta, aunque el costo físico calculado permanezca visible.
 
-- El usuario hace clic o arrastra un nodo en Leaflet (OpenStreetMap).
-- Se consulta OSRM para calcular la geometría, kilómetros y minutos de cada tramo.
-- Si OSRM no responde, se utiliza `Haversine × 1,25` y velocidad de 42 km/h **como contingencia no vial**, con línea punteada y advertencia visible.
-- El costo por km varía con la distancia de esa ruta calculada, pero una cotización manual no varía automáticamente con la geometría.
-- Las coordenadas iniciales de Espinal, Melgar y Tunja son **referencias urbanas didácticas**, no puntos de instalaciones verificadas.
-- Los peajes se identifican como **candidatos** próximos a la geometría OSRM, con tolerancia espacial de 160 metros. Se cargan 58 estaciones provenientes de una copia de trabajo anterior de GeoFlujo (base de referencia INVÍAS).
-- La detección es espacial y **no equivale a confirmación de cobro**. Se pueden excluir coincidencias, modificar importes y seleccionar peajes manuales. Una tarifa cero/no reportada se considera **no disponible**, no exención.
-- Si solo existe ruta estimada, no se asocian peajes por proximidad para evitar falsos cobros. Los peajes manuales siguen disponibles.
-- El mapa permite reintentar bibliotecas/teselas y redimensiona al cambiar el espacio disponible. El recorrido provisional no equivale a la vía real.
+## Cotización comercial
 
-## Caso de control del Excel
+De manera alternativa al costo generalizado propio, el usuario puede introducir una cotización por vehículo para la ida. El sistema la multiplica por el número de vehículos y registra si incluye peajes y/o retorno. La cotización reemplaza, no se suma al importe técnico de ida.
 
-Para `Q0=5.500 kg`, una ruta conceptual de `276,934 km`, cotización de transporte `726.932,564 COP`, peajes `132.700 COP` y operaciones de `74 + 25 + 20 COP/kg`:
+Los componentes porcentuales del costo generalizado muestran el presupuesto técnico calculado, **no una desagregación real de la contabilidad del transportador** cuando se emplea una cotización externa.
 
-- Merma directa: `2,44 %` → `Q_recibida=5.365,8 kg`.
-- Costo de operaciones: `654.500 COP`.
-- Costo transporte y peajes: `859.632,564 COP`.
-- Total parcial: `1.514.132,564 COP`.
-- Costo por kg recibido: `282,182072... COP/kg`.
+## Rechazo atribuible al transporte
 
-La prueba `tests/engine.test.js` verifica estos valores. El mapa en vivo puede devolver **otra distancia**, por lo que para reproducir el costo de referencia se debe seleccionar el método de *cotización manual* en vez de tarifa por km.
+El rechazo es un porcentaje sobre Q0 aplicado al llegar al destino:
 
-## Gestión de fuentes
+- Q_rechazado = Q0 × m / 100.
+- Q_aceptado = Q0 − Q_rechazado.
+- Costo por kg despachado = costo total / Q0.
+- Costo por kg aceptado = costo total / Q_aceptado.
 
-- `SRC_COSTOS`: archivo de trabajo, no tarifa pública actualizada.
-- `SRC_ESC_TOLIMA`: ruta/peajes y caso de calibración del libro.
-- `SRC_CAL_LAB_2026`: proxy de mano de obra de selección de 74 COP/kg, no cotización observada.
-- `SRC_DANE_MANGO_TUNJA_2019`: referencia histórica de comercio del mango, no merma universal ni indicador actual.
-- `SRC_AGROSAVIA_MANGO_2025`: soporte técnico del empaque para mango, con costo de canastilla pendiente.
-- `SRC_SUPUESTO`: referencia provisional de merma de 1 % en acopio.
+La tasa inicial de 2,3 % es un valor aproximado basado en un estudio académico de cadena frutícola, no una tasa observada para toda ruta de mango Tommy. Es editable. No se usan adicionalmente pérdidas comerciales globales, lo cual evitaría doble conteo.
 
-Las fuentes externas futuras (DANE/SIPSA, SICE-TAC, AGROSAVIA, compradores y operadores) se incorporarán como **capas trazables** con fuente, fecha, vigencia y nivel de confianza, no como parámetros actualizados automáticamente sin verificación.
+## Parámetros, fuentes y vigencia
 
-## Riesgos que siguen abiertos
+La pestaña advanced.html permite editar cada dimensión, su tarifa y la fuente conceptual de procedencia. Los grupos de referencias abarcan UC Davis para madurez/temperatura, AGROSAVIA para manejo de mango, fichas de fabricante/comercio para canastillas, estudios sobre rendimiento por terreno, referencia regional de peajes y SICE-TAC como marco de costo eficiente.
 
-1. El modelo asume que la totalidad de la masa inicial está disponible para despacho y que la merma comercial ocurre en la entrega (en la realidad puede suceder antes).
-2. La identificación espacial de peajes debe contrastarse con sentido de cobro, categoría, tarifas vigentes y posibles vías paralelas. Un peaje de la ruta directa no debe copiarse al recorrido con acopio sin verificar su geometría.
-3. Se limita capacidad del vehículo a kilogramos, sin validar volumen, apilamiento, refrigeración ni restricciones por tipo de vía.
-4. Con `N>1` el modelo calcula viajes necesarios y costo total, pero no resuelve su calendarización.
-5. La ruta y el precio de transporte no acreditan factibilidad contractual, sanitaria o de acceso a mercados.
-6. Los resultados sin empaque monetizado deben rotularse como costos parciales.
+No se representa el resultado oficial de SICE-TAC ni se certifica circulación en todo tramo vial. Los precios monetarios y consumos iniciales pueden cambiar según proveedor, fecha, vehículo, territorio y contrato.
+
+## Operación de la aplicación
+
+Los parámetros se guardan en almacenamiento local del navegador y se sincronizan entre la pestaña de cálculo y la de edición avanzada. Los modelos completos se pueden exportar o importar en JSON. La herramienta es un sitio estático desplegado en GitHub Pages.
