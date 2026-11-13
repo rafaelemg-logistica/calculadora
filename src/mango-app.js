@@ -484,6 +484,7 @@ function openAdvanced(section=''){
 }
 function closeAdvanced(){
  $('advanced-overlay').hidden=true;document.body.classList.remove('drawer-open');
+ $('advanced-frame').onload=null;
  $('advanced-frame').src='about:blank';advancedFrameLoaded=false;
  lastFocused?.focus?.();
 }
