@@ -120,7 +120,7 @@ export function calculateMango(model,routes){
    fixed+timeCost*(outward.durationMin/60+prepTime)/(drivingHours+prepTime||1)+coldCOP+tollOutCOP;
  const unquotedReturn=fuelReturnCOP+(repairs+tires+supplies)*(1-outShare)+
    timeCost*(returning.durationMin/60)/(drivingHours+prepTime||1)+tollReturnCOP;
- let chargedOut=unquotedOut, chargedReturn=s.returnIncluded?0:unquotedReturn;
+ let chargedOut=unquotedOut, chargedReturn=unquotedReturn;
  const quote=t.allowQuote?assertNonnegative(t.quoteCOP,'Cotización de transporte'):null;
  if(t.allowQuote){
    chargedOut=trucks*quote+(!t.quoteIncludesTolls?tollOutCOP:0);
@@ -157,7 +157,8 @@ export function calculateMango(model,routes){
  if(outboundTolls.missing.length||returnTolls.missing.length)
    warnings.push('Existen estaciones próximas a la vía sin tarifa para la categoría seleccionada.');
  if(t.allowQuote)warnings.push('La distribución técnica de costos es referencial; no descompone la cotización del transportador.');
- if(s.returnIncluded)warnings.push('Todos los vehículos regresan; el costo físico del retorno se muestra pero no se cobra nuevamente.');
+ if(s.returnIncluded&&!t.allowQuote)warnings.push('El costo generalizado incluye el regreso de toda la flota; la opción contractual no descuenta este costo físico.');
+ if(s.returnIncluded&&t.allowQuote)warnings.push('Todos los vehículos regresan; la cotización integral evita un cobro adicional por el retorno.');
  if(s.preservation==='ambiente'&&s.ripeness==='maduro')
    warnings.push('Para mango maduro conviene verificar temperatura, ventilación y duración del transporte.');
  if(p.product.rejectPct===2.3)
