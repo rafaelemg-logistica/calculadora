@@ -6,14 +6,14 @@ Calculadora cartográfica de costos logísticos para **mango fresco**.
 
 ## Flujo guiado
 
-1. Mango: cantidad neta de mango Tommy Atkins despachada y madurez.
+1. Mango: cantidad neta de mango Tommy Atkins despachada (campo vacío al iniciar una operación) y madurez.
 2. Preparación: empaque, inclusión de su costo y almacenamiento opcional. El cargue es obligatorio.
-3. Recorrido: origen, destino, vehículo, conservación ambiente o refrigerada y selección geográfica de puntos.
+3. Recorrido: origen y destino inicialmente vacíos, búsqueda geográfica explícita, marcadores arrastrables, nombres obtenidos por geocodificación inversa y selección de ruta vial cuando existen alternativas.
 4. Retorno: regreso de **todos los vehículos** y recuperación de empaques, con control de costos ya incluidos en el servicio.
 
-El resultado presenta mapa de ida y regreso, kilómetros, tiempo, número de vehículos, empaques, rechazo atribuible al transporte al recibir, costos de ida, retorno, peajes, servicios y costo por kg aceptado.
+El resultado presenta mapa de ida y regreso, kilómetros, tiempo, número de vehículos, empaques, rechazo atribuible al transporte al recibir, costos de ida, retorno, peajes, servicios y costo por kg aceptado. Cuando OSRM proporciona rutas alternativas verdaderas, se muestran sus geometrías, distancias, tiempos y costos calculados. Seleccionar una alternativa sustituye el tramo de ida que utiliza el motor.
 
-**Parámetros avanzados** abre la página advanced.html en otra pestaña. Permite modificar catálogo de empaques, vehículos, tarifa de cargue/descargue, conservación, rendimientos de combustible, terreno, peajes por sentido, cotizaciones y fuentes. Los cambios se sincronizan dentro del mismo navegador.
+**Parámetros avanzados** abre un panel lateral integrado. Los cambios se editan sin afectar aún la operación y se confirman con **Aplicar cambios y recalcular**. El panel conserva las respuestas, ubicaciones, ruta seleccionada y paso actual. La vista ocupa toda la pantalla en celulares. El catálogo técnico se gestiona desde `advanced.html?embed=1`, dentro del panel.
 
 ## Método de cálculo
 
@@ -39,12 +39,14 @@ Se utiliza SICE-TAC como **referencia metodológica**, sin afirmar que el cálcu
 ## Estructura
 
 - index.html: asistente paso a paso y resultado cartográfico.
-- advanced.html: edición técnica en otra pestaña.
+- advanced.html: edición técnica cargada dentro del panel lateral, con confirmación de cambios.
 - src/config.js: catálogo de parámetros y fuentes.
 - src/mango-engine.js: motor de cantidades, restricciones y costos.
-- src/mango-app.js: experiencia interactiva.
+- src/mango-app.js: asistente, mapa y selección interactiva de rutas con recálculo.
 - src/advanced.js: edición y sincronización.
-- src/routing.js y src/tolls.js: rutas y peajes.
+- src/routing.js, src/route-choice.js y src/tolls.js: alternativas OSRM, selección de ruta que afecta el cálculo y peajes.
+- src/geocode.js: búsqueda de lugares y geocodificación inversa.
+- src/hig.css: diseño Apple HIG con colores institucionales RAP-E 2024.
 - assets/peajes-region-central.geojson: estaciones de referencia regional.
 - docs/modelo-y-parametros.md: ecuaciones y reglas.
 
