@@ -3,49 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#174e40">
-  <meta name="description" content="GeoFlujo Mango: calculadora cartográfica de costos logísticos del mango fresco.">
+  <meta name="theme-color" content="#1C2343">
+  <meta name="description" content="GeoFlujo Mango: transporte, costos y trazados del mango fresco en la Región Central.">
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
-  <link rel="stylesheet" href="./src/mango.css?v=1">
-  <title>GeoFlujo Mango · Calculadora logística</title>
+  <link rel="stylesheet" href="./src/mango.css?v=2">
+  <link rel="stylesheet" href="./src/hig.css?v=2">
+  <title>GeoFlujo Mango · RAP-E Región Central</title>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><div class="brand-mark">G<span>●</span></div>
-      <div><strong>GeoFlujo <em>Mango</em></strong><small>Costos logísticos · producto fresco</small></div>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">G<span>●</span></div>
+      <div class="brand-title"><strong>GeoFlujo <em>Mango</em></strong><small>Logística del mango fresco</small></div>
+      <span class="brand-separator" aria-hidden="true"></span>
+      <a class="brand-rape" href="https://regioncentralrape.gov.co/" target="_blank" rel="noopener" title="RAP-E Región Central">
+        <img src="https://regioncentralrape.gov.co/wp-content/uploads/2025/08/logo-6.png" alt="RAP-E Región Central" loading="lazy">
+        <span>RAP-E<br>Región Central</span>
+      </a>
     </div>
     <div class="top-actions">
-      <a class="advanced-link" href="./advanced.html" target="_blank" rel="noopener" id="advanced-link">⚙ Parámetros avanzados ↗</a>
-      <button type="button" class="quiet" id="reset">Restablecer</button>
+      <button type="button" id="open-advanced" class="advanced-link">⚙ Parámetros avanzados</button>
+      <button type="button" id="reset" class="quiet">Nueva operación</button>
     </div>
   </header>
   <main class="shell">
     <section class="main-column">
       <div class="intro" id="intro">
-        <span class="eyebrow">TU OPERACIÓN LOGÍSTICA</span>
-        <h1>Calcula el recorrido de tu mango.</h1>
-        <p>Cuéntanos lo esencial sobre el despacho. GeoFlujo estima vehículos, recorrido, costos de ida y regreso y kilogramos aceptados en destino.</p>
+        <span class="eyebrow">CALCULADORA AGROLOGÍSTICA · RAP-E REGIÓN CENTRAL</span>
+        <h1>El recorrido de tu mango, con costos claros.</h1>
+        <p>Configura el despacho en cuatro pasos, elige una ruta en el mapa y consulta los costos de ida, retorno y recepción. Cada cambio afecta el cálculo.</p>
       </div>
-      <nav class="steps" id="steps" aria-label="Progreso">
+      <nav class="steps" id="steps" aria-label="Avance de la operación">
         <button data-goto="1" class="active"><span>1</span><small>Mango</small></button>
-        <button data-goto="2"><span>2</span><small>Preparación</small></button>
-        <button data-goto="3"><span>3</span><small>Recorrido</small></button>
-        <button data-goto="4"><span>4</span><small>Retorno</small></button>
-        <button data-goto="5"><span>✓</span><small>Resultado</small></button>
+        <button data-goto="2" disabled><span>2</span><small>Preparación</small></button>
+        <button data-goto="3" disabled><span>3</span><small>Recorrido</small></button>
+        <button data-goto="4" disabled><span>4</span><small>Retorno</small></button>
+        <button data-goto="5" disabled><span>✓</span><small>Resultado</small></button>
       </nav>
       <div class="form-card" id="wizard">
         <section class="step-panel" data-step="1">
-          <span class="eyebrow">PASO 1 / MANGO</span>
+          <span class="eyebrow">01 / MANGO</span>
           <h2>¿Cuánto mango vas a despachar?</h2>
-          <p class="step-description">La cantidad corresponde al peso neto de mango listo para salir de la finca o centro productivo, sin incluir empaques.</p>
+          <p class="step-description">Cantidad neta lista para transportar, sin el peso de las canastillas.</p>
           <div class="fields two">
             <label>Producto <input disabled value="Mango fresco · Tommy Atkins"></label>
-            <label>Cantidad neta (kg) <input id="dispatchKg" type="number" min="0.01" step="50" inputmode="decimal" required></label>
+            <label for="dispatchKg">Cantidad neta (kg)
+              <input id="dispatchKg" type="number" min="0.01" step="any" inputmode="decimal" placeholder="Ingrese la cantidad" autocomplete="off" required>
+            </label>
           </div>
-          <label>Estado de madurez del mango
+          <label for="ripeness">Estado de madurez
             <select id="ripeness">
-              <option value="verde">Verde maduro (madurez fisiológica)</option>
+              <option value="verde">Verde maduro</option>
               <option value="pinton">Pintón / parcialmente maduro</option>
               <option value="maduro">Maduro para consumo</option>
             </select>
@@ -53,105 +62,133 @@
           <p class="help-note" id="ripeness-note"></p>
         </section>
         <section class="step-panel" data-step="2" hidden>
-          <span class="eyebrow">PASO 2 / PREPARACIÓN</span>
-          <h2>¿Cómo se preparará la carga?</h2>
-          <p class="step-description">El cargue se contabiliza siempre. El empaque puede no representar un costo adicional, pero su tara y dimensiones siguen ocupando capacidad.</p>
-          <label>Presentación y empaque <select id="packaging"></select></label>
-          <label class="check"><input id="packagingIncluded" type="checkbox"> El empaque ya está incluido en el precio del mango</label>
-          <label class="check"><input id="storageEnabled" type="checkbox"> El mango permanecerá almacenado antes del despacho</label>
+          <span class="eyebrow">02 / PREPARACIÓN</span>
+          <h2>¿Cómo se prepara la carga?</h2>
+          <p class="step-description">El cargue siempre se contempla. El empaque puede estar incluido en el precio, pero su peso y dimensiones siguen afectando la capacidad del vehículo.</p>
+          <label for="packaging">Empaque del mango <select id="packaging"></select></label>
+          <label class="check"><input id="packagingIncluded" type="checkbox"> El precio del mango ya incluye el empaque</label>
+          <label class="check"><input id="storageEnabled" type="checkbox"> Almacenamiento antes de transportar</label>
           <div id="storage-row" class="fields two" hidden>
-            <label>Duración del almacenamiento (horas) <input type="number" id="storageHours" min="0" step="1"></label>
-            <div class="note-panel">El almacenamiento se calculará por posiciones de estiba y tiempo facturable con las tarifas del catálogo.</div>
+            <label for="storageHours">Horas de almacenamiento <input type="number" id="storageHours" min="1" step="1"></label>
+            <div class="note-panel">Se calcula por posiciones de estiba y tiempo facturable, según el tipo de conservación.</div>
           </div>
-          <div class="note-panel"><strong>Siempre incluido:</strong> cargue en origen y descargue al llegar al destino.</div>
+          <div class="note-panel"><strong>Incluidos:</strong> cargue en origen y descargue en destino.</div>
         </section>
         <section class="step-panel" data-step="3" hidden>
-          <span class="eyebrow">PASO 3 / TRANSPORTE</span>
-          <h2>¿Qué recorrido hará el mango?</h2>
-          <p class="step-description">Puedes mover los puntos en el mapa o elegir «Ubicar» y hacer clic en el lugar. El trazado se actualiza sin borrar las demás respuestas.</p>
+          <span class="eyebrow">03 / RECORRIDO</span>
+          <h2>¿De dónde a dónde viajará el mango?</h2>
+          <p class="step-description">Busca una ubicación o selecciónala en el mapa. Podrás comparar rutas reales cuando el servicio cartográfico ofrezca varias alternativas.</p>
           <div class="fields two">
-            <label>Tipo de vehículo <select id="vehicle"></select></label>
-            <label>Conservación durante el viaje
+            <label for="vehicle">Vehículo <select id="vehicle"></select></label>
+            <label for="preservation">Conservación
               <select id="preservation"><option value="ambiente">Ambiente ventilado</option><option value="refrigerado">Refrigerado</option></select>
             </label>
           </div>
+          <div class="vehicle-description" id="vehicle-description" aria-live="polite"></div>
           <p id="temperature-note" class="help-note"></p>
           <div class="location-list">
             <div class="location-row">
               <span class="pin a">A</span>
-              <label>Origen<input id="originName" type="text" autocomplete="off"></label>
-              <button id="set-origin" type="button" class="subtle">Ubicar</button>
+              <label for="originName">Origen <input id="originName" type="text" placeholder="Buscar origen" autocomplete="off"></label>
+              <button id="search-origin" type="button" class="subtle">Buscar</button>
+              <button id="set-origin" type="button" class="subtle" aria-pressed="false">En mapa</button>
             </div>
+            <div id="matches-origin" class="place-matches" hidden></div>
             <div class="location-row">
               <span class="pin b">B</span>
-              <label>Destino<input id="destinationName" type="text" autocomplete="off"></label>
-              <button id="set-destination" type="button" class="subtle">Ubicar</button>
+              <label for="destinationName">Destino <input id="destinationName" type="text" placeholder="Buscar destino" autocomplete="off"></label>
+              <button id="search-destination" type="button" class="subtle">Buscar</button>
+              <button id="set-destination" type="button" class="subtle" aria-pressed="false">En mapa</button>
             </div>
+            <div id="matches-destination" class="place-matches" hidden></div>
           </div>
-          <div id="map-instructions" class="help-note">Elige «Ubicar» para cambiar un punto. También puedes arrastrarlo directamente.</div>
-          <div class="map-box" id="wizard-map"><div id="map" role="application" aria-label="Mapa de origen y destino"></div>
-            <div class="map-overlay" id="map-overlay" role="status">Cargando mapa…</div>
-            <button type="button" id="retry-map" class="map-retry">↻ Reintentar mapa</button>
-          </div>
-          <p class="map-attribution">Mapa © OpenStreetMap. El servicio de rutas utiliza OSRM; los tramos aproximados se identifican expresamente.</p>
+          <p id="map-instructions" class="help-note">Selecciona ambos lugares en el mapa o mediante la búsqueda.</p>
+          <div id="map-placeholder"></div>
         </section>
         <section class="step-panel" data-step="4" hidden>
-          <span class="eyebrow">PASO 4 / REGRESO</span>
-          <h2>¿Cómo será la logística inversa?</h2>
-          <p class="step-description">Todos los vehículos utilizados en el viaje de ida se consideran también en el regreso. El sistema calcula por separado el costo físico y el importe atribuible a tu operación.</p>
-          <div class="note-panel"><strong id="return-fleet">La cantidad de vehículos se calculará según el empaque y la carga.</strong></div>
-          <label class="check"><input id="returnPackaging" type="checkbox"> Se devuelven las canastillas o empaques reutilizables</label>
-          <div id="return-share-row"><label>Porcentaje de empaques que regresan <input type="number" id="returnShare" min="0" max="100" step="1"> </label></div>
-          <label class="check"><input id="returnIncluded" type="checkbox"> El costo del regreso ya está incluido en el servicio contratado</label>
-          <p class="help-note">El regreso siempre se representa en el mapa. Cuando ya se encuentra incluido en el valor contratado no se suma como un segundo cobro.</p>
+          <span class="eyebrow">04 / LOGÍSTICA INVERSA</span>
+          <h2>¿Qué regresará al origen?</h2>
+          <p class="step-description">Todos los vehículos utilizados regresan. También puedes recuperar los empaques retornables.</p>
+          <div class="note-panel"><strong id="return-fleet">El número de vehículos depende de la carga y el empaque.</strong></div>
+          <label class="check"><input id="returnPackaging" type="checkbox"> Recuperar las canastillas retornables</label>
+          <div id="return-share-row"><label for="returnShare">Porcentaje de empaques recuperados <input type="number" id="returnShare" min="0" max="100" step="1"></label></div>
+          <label class="check"><input id="returnIncluded" type="checkbox"> El transporte contratado ya incluye el regreso</label>
+          <p class="help-note">Se calculan ambos trayectos. El costo del regreso no se suma dos veces cuando una cotización integral lo incluye.</p>
         </section>
-        <div id="wizard-error" class="error-message" role="alert" hidden></div>
+        <p class="error-message" id="wizard-error" role="alert" hidden></p>
         <div class="wizard-actions">
           <button id="back" class="subtle" type="button">← Anterior</button>
           <button id="next" class="primary" type="button">Continuar →</button>
         </div>
       </div>
+
       <section id="results" class="results" hidden>
         <div class="result-heading">
-          <div><span class="eyebrow">ANÁLISIS LOGÍSTICO</span><h2>Resultado del recorrido</h2>
-            <p id="result-route-title"></p></div>
-          <button type="button" id="edit-scenario" class="subtle">✎ Cambiar respuestas</button>
+          <div><span class="eyebrow">RESULTADO DEL CÁLCULO</span><h2>Tu operación logística</h2><p id="result-route-title"></p></div>
+          <button type="button" id="edit-scenario" class="subtle">✎ Editar operación</button>
         </div>
         <div id="route-status" class="status" role="status"></div>
         <div class="metric-grid">
-          <div class="metric primary-metric"><small>Costo logístico total</small><strong id="kpi-total">—</strong><span>Costo atribuible a la operación</span></div>
-          <div class="metric"><small>Costo por kg aceptado</small><strong id="kpi-per-accepted">—</strong></div>
-          <div class="metric"><small>Mango aceptado</small><strong id="kpi-accepted">—</strong></div>
-          <div class="metric"><small>Vehículos ida / regreso</small><strong id="kpi-vehicles">—</strong></div>
-          <div class="metric"><small>Recorrido ida + regreso</small><strong id="kpi-km">—</strong></div>
+          <div class="metric primary-metric"><small>Costo logístico total</small><strong id="kpi-total">—</strong><span>Costo atribuible al despacho</span></div>
+          <div class="metric"><small>Por kg aceptado</small><strong id="kpi-per-accepted">—</strong></div>
+          <div class="metric"><small>Mango despachado / aceptado</small><strong id="kpi-accepted">—</strong></div>
+          <div class="metric"><small>Vehículo / cantidad</small><strong id="kpi-vehicles">—</strong></div>
+          <div class="metric"><small>Distancia y duración de ida</small><strong id="kpi-km">—</strong></div>
           <div class="metric"><small>Rechazo en destino</small><strong id="kpi-reject">—</strong></div>
         </div>
         <div class="result-map-slot" id="result-map-slot"></div>
         <div class="detail-grid">
-          <article class="detail"><h3>Composición del costo</h3><div id="cost-lines"></div></article>
-          <article class="detail"><h3>Operación física</h3><div id="physical-lines"></div></article>
+          <article class="detail"><h3>Distribución del costo</h3><div id="cost-lines"></div></article>
+          <article class="detail"><h3>Datos de la operación</h3><div id="physical-lines"></div></article>
         </div>
-        <details class="detail expand"><summary>Desagregación técnica del transporte</summary><div id="transport-components"></div></details>
-        <details class="detail expand" open><summary>Peajes, recorrido y condiciones del cálculo</summary><div id="toll-details"></div><div id="warnings"></div></details>
-        <div class="result-actions"><button id="download-result" class="subtle">Descargar análisis JSON</button>
-          <a href="./advanced.html" target="_blank" rel="noopener" class="primary as-link">⚙ Ajustar parámetros avanzados ↗</a></div>
+        <details class="detail expand"><summary>Composición del transporte</summary><div id="transport-components"></div></details>
+        <details class="detail expand"><summary>Peajes y supuestos técnicos</summary><div id="toll-details"></div><div id="warnings"></div></details>
+        <div class="result-actions">
+          <button id="download-result" class="subtle" type="button">Exportar análisis JSON</button>
+          <button id="adjust-results" class="primary" type="button">⚙ Parámetros avanzados</button>
+        </div>
       </section>
+
+      <div class="map-root" id="map-root">
+        <div class="map-toolbar">
+          <div><strong>Mapa de recorrido</strong><span id="map-caption">Selecciona origen y destino</span></div>
+          <button type="button" id="retry-map" class="subtle">↻ Reintentar</button>
+        </div>
+        <div class="map-box" id="wizard-map">
+          <div id="map" aria-label="Mapa interactivo de origen y destino"></div>
+          <div class="map-overlay" id="map-overlay" role="status" hidden></div>
+        </div>
+        <div class="map-bottom">
+          <div class="map-legend"><span><i class="legend-out"></i> Ida</span><span><i class="legend-back"></i> Regreso</span><span><i class="legend-alt"></i> Alternativa</span></div>
+          <p>© OpenStreetMap · recorridos OSRM. Las estimaciones se identifican en pantalla.</p>
+        </div>
+        <div id="route-alternatives" class="route-alternatives" aria-live="polite"></div>
+      </div>
     </section>
     <aside class="side-column">
       <div class="side-card">
-        <span class="eyebrow">ASÍ FUNCIONA</span>
-        <h2>Del origen al destino, con el regreso incluido.</h2>
+        <span class="eyebrow">GEOFLUJO MANGO</span>
+        <h2>Datos que se convierten en decisiones.</h2>
         <div class="mini-flow"><span>Producción</span><span>→</span><span>Transporte</span><span>→</span><span>Destino</span></div>
-        <p>El costo considera empaque, cargue, transporte, conservación, descargue y retorno. El rechazo atribuible al transporte se mide al recibir la carga.</p>
+        <p>Una operación, dos nodos y un recorrido de ida y regreso. La selección de ruta afecta kilómetros, tiempos, peajes y costos.</p>
       </div>
-      <div class="side-card">
-        <h3>Supuestos documentados</h3>
-        <p>Los parámetros combinan fuentes técnicas y aproximaciones de costo. Puedes revisar sus valores, fórmulas y procedencia en otra pestaña, sin perder el recorrido.</p>
-        <a href="./advanced.html#fuentes" target="_blank" rel="noopener" class="text-link">Consultar referencias ↗</a>
+      <div class="side-card side-live"><h3>Resumen del despacho</h3><div id="live-summary"></div></div>
+      <div class="side-card"><h3>Transparencia del cálculo</h3><p>Parámetros técnicos y estimaciones configurables. SICE-TAC se utiliza como referencia metodológica; las rutas y las tarifas se verifican por separado.</p>
+        <button type="button" id="open-sources" class="text-link">Consultar parámetros y fuentes →</button>
       </div>
-      <div class="side-card side-live"><h3>Resumen de tu carga</h3><div id="live-summary"></div></div>
     </aside>
   </main>
-  <script type="module" src="./src/mango-app.js?v=1"></script>
+  <div class="drawer-overlay" id="advanced-overlay" hidden>
+    <button type="button" class="drawer-backdrop" id="advanced-backdrop" aria-label="Cerrar parámetros avanzados"></button>
+    <aside class="advanced-drawer" role="dialog" aria-modal="true" aria-labelledby="advanced-title">
+      <div class="drawer-head">
+        <div><span class="eyebrow">CONFIGURACIÓN TÉCNICA</span><h2 id="advanced-title">Parámetros avanzados</h2></div>
+        <button id="close-advanced" type="button" class="subtle" aria-label="Cerrar panel avanzado">✕ Cerrar</button>
+      </div>
+      <iframe id="advanced-frame" title="Edición integrada de parámetros" loading="lazy"></iframe>
+    </aside>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="./src/mango-app.js?v=2"></script>
 </body>
 </html>
