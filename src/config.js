@@ -4,6 +4,7 @@
  */
 export const STORAGE_KEY = 'geoflujo-mango-v3';
 export const CHANNEL_NAME = 'geoflujo-mango-parametros';
+export const INSTANCE_ID = Math.random().toString(36).slice(2);
 
 export const DEFAULTS = {
   schema: 'geoflujo-mango/v3',
@@ -105,7 +106,7 @@ export function storeState(state){
  if(!validateState(state))throw new Error('La configuración no es válida.');
  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
  catch{/* La aplicación puede funcionar sin persistencia. */}
- try{const channel=new BroadcastChannel(CHANNEL_NAME);channel.postMessage('changed');channel.close();}
+ try{const channel=new BroadcastChannel(CHANNEL_NAME);channel.postMessage({event:'changed',source:INSTANCE_ID});channel.close();}
  catch{/* Algunos navegadores no disponen de este canal. */}
 }
 export function resetState(){const model=defaults();storeState(model);return model;}
