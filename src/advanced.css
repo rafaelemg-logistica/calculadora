@@ -50,3 +50,19 @@
 .embedded .advanced-intro p{max-width:720px}
 .embedded .advanced-apply-bar{bottom:0}
 @media(max-width:670px){.embedded .settings-grid{grid-template-columns:1fr}.advanced-apply-bar{padding:10px 14px;display:block}.advanced-apply-bar button{width:100%;margin-top:5px}}
+
+/* RAP-E navy/white language for the integrated advanced workspace. */
+.embedded{color:#1C2343;background:#F5F7FB}
+.embedded .advanced-nav{border-color:#DDE5F0;border-radius:12px}
+.embedded .advanced-nav a{color:#354766}
+.embedded .advanced-nav a:hover{color:#1C2343;background:#ECF4FB}
+.embedded .settings-card{border-color:#E1E6EF;border-radius:16px;box-shadow:0 5px 22px #1C23430c}
+.embedded .settings-card h2,.embedded .settings-card h3{color:#1C2343}
+.embedded .setting-field{color:#4D6079}
+.embedded .setting-field input,.embedded .setting-field select{border-radius:11px;border-color:#D8E1EE;min-height:42px}
+.embedded .setting-field input:focus,.embedded .setting-field select:focus{outline:3px solid #09A4DE40}
+.embedded .setting-check{background:#F2F5FA}
+.embedded .setting-check input{accent-color:#1C2343}
+.embedded .advanced-apply-bar{border-color:#E0E6EF}
+.embedded .advanced-apply-bar .primary{background:#1C2343;border-color:#1C2343}
+.embedded .source-links a{color:#176B94}
