@@ -1,9 +1,9 @@
-import {defaults,loadState,storeState,readyToCalculate,validateParameters} from './config.js';
+import {defaults,loadState,storeState,readyToCalculate,validateParameters} from './config.js?v=2';
 import {calculateMango} from './mango-engine.js';
-import {fetchRoadAlternatives,fetchRoadLeg,lineFallback,hasPoint} from './routing.js';
+import {fetchRoadAlternatives,fetchRoadLeg,lineFallback,hasPoint} from './routing.js?v=2';
 import {parseTollCatalog,tollSelection} from './tolls.js';
-import {routeKey,selectAlternative,attachTolls,alternativeResult,applyParameters} from './route-choice.js';
-import {searchLocations,reverseLocation,fallbackCoordinateLabel} from './geocode.js';
+import {routeKey,selectAlternative,attachTolls,alternativeResult,applyParameters} from './route-choice.js?v=2';
+import {searchLocations,reverseLocation,fallbackCoordinateLabel} from './geocode.js?v=2';
 
 const $=id=>document.getElementById(id);
 const money=v=>'$ '+new Intl.NumberFormat('es-CO',{maximumFractionDigits:0}).format(v);
