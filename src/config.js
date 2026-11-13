@@ -2,14 +2,14 @@
  * GeoFlujo Mango · configuración inicial de referencia.
  * Las tarifas estimadas no equivalen a cotizaciones ni a resultados oficiales de SICE-TAC.
  */
-export const STORAGE_KEY = 'geoflujo-mango-v3';
+export const STORAGE_KEY = 'geoflujo-mango-v4';
 export const CHANNEL_NAME = 'geoflujo-mango-parametros';
 export const INSTANCE_ID = Math.random().toString(36).slice(2);
 
 export const DEFAULTS = {
-  schema: 'geoflujo-mango/v3',
+  schema: 'geoflujo-mango/v4',
   scenario: {
-    dispatchKg: 5500,
+    dispatchKg: null,
     ripeness: 'verde',
     packagingId: 'canastilla',
     packagingIncluded: true,
@@ -20,8 +20,8 @@ export const DEFAULTS = {
     returnPackaging: true,
     returnShare: 1,
     returnIncluded: false,
-    origin: {name:'Espinal, Tolima',lat:4.1496,lng:-74.8840},
-    destination: {name:'Tunja, Boyacá',lat:5.5353,lng:-73.3678}
+    origin: {name:'',lat:null,lng:null},
+    destination: {name:'',lat:null,lng:null}
   },
   parameters: {
     product: {variety:'Tommy Atkins',humidityPct:92,
@@ -88,14 +88,73 @@ export const PARAMETER_SOURCES = [
 
 const clone=x=>JSON.parse(JSON.stringify(x));
 export function defaults(){return clone(DEFAULTS);}
-function validCoordinates(p){return Number.isFinite(p?.lat)&&Number.isFinite(p?.lng)
-  &&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180;}
+export function validCoordinates(p){
+ return Number.isFinite(p?.lat)&&Number.isFinite(p?.lng)
+   &&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180;
+}
+export function readyToCalculate(s){
+ return Number.isFinite(s?.scenario?.dispatchKg)&&s.scenario.dispatchKg>0
+  &&validCoordinates(s.scenario.origin)&&validCoordinates(s.scenario.destination);
+}
 export function validateState(s){
- return s?.schema==='geoflujo-mango/v3'
-  &&Number.isFinite(s.scenario?.dispatchKg)&&s.scenario.dispatchKg>0
-  &&validCoordinates(s.scenario?.origin)&&validCoordinates(s.scenario?.destination)
+ const dispatch=s?.scenario?.dispatchKg;
+ const quantityValid=dispatch===null||(Number.isFinite(dispatch)&&dispatch>0);
+ const pt=p=>p&&typeof p.name==='string'
+   &&((p.lat===null&&p.lng===null)||validCoordinates(p));
+ return Boolean(s?.schema==='geoflujo-mango/v4'
+  &&quantityValid&&pt(s.scenario?.origin)&&pt(s.scenario?.destination)
   &&Array.isArray(s.parameters?.vehicles)&&Array.isArray(s.parameters?.packaging)
-  &&!!s.parameters?.transport&&!!s.parameters?.product;
+  &&!!s.parameters?.transport&&!!s.parameters?.product);
+}
+/**
+ * Validación numérica del catálogo antes de aplicar un cambio avanzado.
+ * Rechaza NaN, dimensiones nulas, tasas incoherentes y mezcla vial sin normalizar.
+ */
+export function validateParameters(p){
+ if(!p||!Array.isArray(p.packaging)||!Array.isArray(p.vehicles)
+    ||!p.product||!p.nodeCosts||!p.transport)throw Error('Faltan categorías de parámetros.');
+ const nonneg=(v,name)=>{if(typeof v!=='number'||!Number.isFinite(v)||v<0)
+  throw Error('Revisa '+name+': debe ser un número no negativo.');};
+ const positive=(v,name)=>{nonneg(v,name);if(v===0)throw Error(name+' debe ser mayor que cero.');};
+ const t=p.transport;
+ positive(p.product.humidityPct,'Humedad relativa');
+ if(p.product.humidityPct>100)throw Error('La humedad relativa no puede superar el 100 %.');
+ nonneg(p.product.rejectPct,'Rechazo por transporte');
+ if(p.product.rejectPct>=100)throw Error('El rechazo debe ser inferior a 100 %.');
+ for(const [k,v] of Object.entries(p.product.temperature)){
+   nonneg(v,'Temperatura '+k);
+   if(v>40)throw Error('La temperatura configurada supera 40 °C.');
+ }
+ for(const x of p.packaging){
+   for(const k of ['capacityKg','lengthM','widthM','heightM','cycles','maxStack'])positive(x[k],'Empaque '+x.name+' / '+k);
+   for(const k of ['tareKg','purchaseCOP','washingCOP','replacementPct'])nonneg(x[k],'Empaque '+x.name+' / '+k);
+   if(x.replacementPct>100)throw Error('La reposición no puede superar 100 %.');
+   if(!Number.isInteger(x.maxStack)||!Number.isInteger(x.cycles))throw Error('Apilamiento y usos deben ser enteros.');
+ }
+ for(const x of p.vehicles){
+   for(const k of ['payloadKg','volumeM3','lengthM','widthM','heightM','costFactor'])positive(x[k],'Vehículo '+x.name+' / '+k);
+   for(const k of ['coldFuelLh','coldEquipmentCOPH'])nonneg(x[k],'Vehículo '+x.name+' / '+k);
+   if(!['I','II','III','IV','V','VI','VII'].includes(x.tollCategory))throw Error('Categoría de peaje desconocida.');
+ }
+ for(const [k,v] of Object.entries(p.nodeCosts)){
+   if(typeof v==='number')nonneg(v,'Operaciones / '+k);
+ }
+ positive(p.nodeCosts.palletFootprintM2,'Área de estiba');
+ positive(p.nodeCosts.storageBillingDaysPerMonth,'Días de facturación');
+ for(const k of ['dieselCOPPerGallon','fallbackDistanceMultiplier','fallbackSpeedKmh','routeMultiplier'])
+   positive(t[k],'Transporte / '+k);
+ for(const k of ['repairsCOPPerKm','tiresCOPPerKm','lubricantsCOPPerKm','serviceFixedCOP',
+   'vehicleTimeCOPPerH','refrigeratedPreCoolH','manualTollOutbound','manualTollReturn','quoteCOP'])
+   nonneg(t[k],'Transporte / '+k);
+ for(const [k,v] of Object.entries(t.baseFuelKmPerGallon))positive(v,'Rendimiento '+k);
+ for(const [k,v] of Object.entries(t.surfaceFuelFactor))positive(v,'Superficie '+k);
+ const shares=Object.values(t.terrainMix);
+ shares.forEach((v,i)=>nonneg(v,'Terreno '+i));
+ if(Math.abs(shares.reduce((a,b)=>a+b,0)-1)>0.0001)
+   throw Error('Los porcentajes de tipo de terreno deben sumar 100 %.');
+ if(!['pavimentada','afirmada'].includes(t.roadSurface))throw Error('Superficie vial no válida.');
+ if(!['auto','manual'].includes(t.tollMode))throw Error('Método de peajes no válido.');
+ return true;
 }
 export function loadState(){
  try{const data=JSON.parse(localStorage.getItem(STORAGE_KEY));if(validateState(data))return data;}
