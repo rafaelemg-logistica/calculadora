@@ -76,3 +76,13 @@ No se representa el resultado oficial de SICE-TAC ni se certifica circulación e
 ## Operación de la aplicación
 
 Los parámetros se guardan en almacenamiento local del navegador y se sincronizan entre la pestaña de cálculo y la de edición avanzada. Los modelos completos se pueden exportar o importar en JSON. La herramienta es un sitio estático desplegado en GitHub Pages.
+
+## Interfaz y validaciones de la versión actual
+
+- Los puntos de origen y destino y la cantidad empiezan vacíos. La aplicación no infiere nombres ni utiliza municipios precargados.
+- Al escoger lugares se registran coordenadas verificables mediante búsqueda en Colombia, clic o arrastre, y se solicita nombre inverso cuando el servicio esté disponible. Si no lo está, se visualizan las coordenadas.
+- El mapa se centra en la Región Central si no hay puntos, en un punto si solamente existe uno, y en el recorrido seleccionado cuando existen dos. Se redimensiona al cambiar del paso 3 al resultado.
+- OSRM puede devolver varias alternativas reales; no se fabrican rutas adicionales. Solo la ruta de ida seleccionada entra en el cálculo, mientras el regreso se consulta por separado. Cambiar la ruta recalcula inmediatamente distancia, duración, peajes candidatos y costo logístico.
+- Los parámetros avanzados se editan dentro de un panel lateral y se confirman como un conjunto válido. El motor de cálculo permanece separado de la interfaz. El paso actual, las coordenadas y la alternativa elegida se conservan al aplicar los cambios.
+- Las nuevas operaciones eliminan la información del despacho, pero mantienen el catálogo técnico personalizado. El panel avanzado permite restaurar sus valores de referencia cuando se desee.
+- El diseño usa azul institucional #1C2343 y blanco como paleta dominante; acentos #09A4DE, #0D8944 y #FCC300. Aplica patrones de jerarquía, controles legibles, retroalimentación y movimiento reducido según Apple Human Interface Guidelines, sin usar componentes Apple ni sugerir afiliación.

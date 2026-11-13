@@ -6,6 +6,7 @@ import {calculateMango,vehicleCapacity,distanceAdjustment} from '../src/mango-en
 function setup(){
  const model=defaults(),leg={distanceKm:200,durationMin:240,source:'osrm',coordinates:[
   [4.14,-74.88],[4.5,-74.4],[5.5,-73.37]],tollCandidates:[]};
+ model.scenario.dispatchKg=5500;
  return {model,routes:{outbound:{...leg},returning:{...leg}}};
 }
 const run=s=>calculateMango(s.model,s.routes);

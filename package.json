@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "python3 -m http.server 5173",
-    "test": "node --check src/config.js && node --check src/mango-engine.js && node --check src/mango-app.js && node --check src/advanced.js && node --test tests/*.test.js"
+    "test": "node --check src/config.js && node --check src/mango-engine.js && node --check src/mango-app.js && node --check src/advanced.js && node --check src/geocode.js && node --check src/route-choice.js && node --check src/routing.js && node --test tests/*.test.js"
   },
   "engines": {
     "node": ">=20"
