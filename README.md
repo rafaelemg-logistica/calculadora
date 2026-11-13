@@ -1,67 +1,57 @@
-# GeoFlujo Agro — Calculadora cartográfica de escenarios logísticos
+# GeoFlujo Mango
 
-**Prototipo independiente para producto fresco.** Permite seleccionar origen, destino y un centro de acopio opcional, trazar recorridos en OpenStreetMap/OSRM y estimar costos, cantidades recibidas y mermas por etapa. El piloto usa **Mango Tommy** y datos de trabajo del archivo Excel suministrado.
+Calculadora cartográfica de costos logísticos para **mango fresco**.
 
-## Probar localmente
+**Aplicación:** https://rafaelemg-logistica.github.io/calculadora/
 
-El proyecto es un sitio estático, no necesita instalar dependencias ni un backend.
+## Flujo guiado
 
-```bash
-python3 -m http.server 5173
-```
+1. Mango: cantidad neta de mango Tommy Atkins despachada y madurez.
+2. Preparación: empaque, inclusión de su costo y almacenamiento opcional. El cargue es obligatorio.
+3. Recorrido: origen, destino, vehículo, conservación ambiente o refrigerada y selección geográfica de puntos.
+4. Retorno: regreso de **todos los vehículos** y recuperación de empaques, con control de costos ya incluidos en el servicio.
 
-Abrir <http://localhost:5173>. Se requiere conexión a Internet para cargar Leaflet, teselas OSM y el servicio OSRM. Si el servidor de rutas no responde, el cálculo utiliza una **estimación explícitamente rotulada**.
+El resultado presenta mapa de ida y regreso, kilómetros, tiempo, número de vehículos, empaques, rechazo atribuible al transporte al recibir, costos de ida, retorno, peajes, servicios y costo por kg aceptado.
 
-Pruebas del motor:
+**Parámetros avanzados** abre la página advanced.html en otra pestaña. Permite modificar catálogo de empaques, vehículos, tarifa de cargue/descargue, conservación, rendimientos de combustible, terreno, peajes por sentido, cotizaciones y fuentes. Los cambios se sincronizan dentro del mismo navegador.
 
-```bash
-node --test tests/*.test.js
-```
+## Método de cálculo
 
-## Primera versión
+- El mango neto despachado no se descuenta antes del transporte.
+- Las canastillas se cuentan enteras: cantidad neta / capacidad por empaque, redondeando al entero superior.
+- La capacidad del vehículo considera tara, peso bruto, volumen y número máximo de empaques apilados.
+- La flota requerida y sus viajes de ida regresan completamente; la cantidad de empaques recuperados se distribuye entre todos los vehículos.
+- El combustible se calcula mediante km, precio ACPM, rendimiento por terreno, condición de carga y configuración vehicular. El perfil de terrenos es una aproximación editable y no una clasificación automática OSRM.
+- Los demás costos del vehículo son fijos por servicio o variables por km/tiempo. Cuando el transporte es refrigerado se agregan los costos incrementales de su equipo.
+- Los peajes se calculan por sentido y categoría, con posibilidad de revisión de las coincidencias geográficas.
+- El rechazo se calcula en destino sobre mango neto despachado, sin descontarlo del transporte o descargue.
+- El costo de retorno se muestra físicamente aunque el valor contratado ya lo incluya, evitando duplicarlo en el costo atribuible.
+- El costo por kg aceptado divide el costo total atribuible entre la cantidad de mango aceptada.
 
-- Mapa central: clic para ubicar, arrastre para mover los puntos y visualización de tramos.
-- Configuraciones: venta directa, mercado mayorista y mayorista con acopio.
-- Datos de entrada breves: kg despachados, vehículo, canal, nodos y tipo de costo de transporte.
-- Tarifas, mermas y empaques editables en opciones avanzadas.
-- Peajes por tramo: detección espacial de **candidatos** sobre geometrías OSRM a partir de 58 estaciones de referencia de la Región Central. El usuario revisa, modifica o excluye coincidencias y puede optar por importe manual.
-- Resultados: total COP, COP/kg recibido, kg entregados, merma, tiempo/distancia y desglose.
-- Comparación directo vs. con acopio usando los mismos parámetros y coordenadas.
-- Importación/exportación JSON y almacenamiento local, sin cuentas.
+La distancia puede reducir el costo **promedio** por km al repartir el costo fijo, sin que por eso disminuya normalmente el costo total. No se aplica un descuento porcentual adicional por kilometraje.
 
-## Archivos principales
+## Referencias y límites
 
-- `src/catalog.js`: catálogo y fuentes de parámetros de referencia.
-- `src/engine.js`: motor de cálculo determinista.
-- `src/routing.js`: distancia y geometría vial, fallback diferenciado.
-- `src/app.js`: experiencia cartográfica y formularios.
-- `src/styles.css`: interfaz adaptable a escritorio y móvil.
-- `tests/engine.test.js`: pruebas del control del Excel y reglas.
-- `docs/modelo-y-parametros.md`: fórmulas, secuencia y limitaciones.
-- `docs/decisiones.md`: decisiones metodológicas y preguntas.
-- `docs/plan-trabajo.md`: fases y tareas pendientes.
+Las dimensiones iniciales del empaque (60 × 40 × 25 cm, tara 1,9 kg), su capacidad de 20 kg y las condiciones de conservación se apoyan en referencias técnicas/comerciales. La vida útil de canastillas, lavado, repuestos, tiempo vehicular, refrigeración, rechazo y composición del costo son aproximaciones configurables.
 
-## Publicar en GitHub Pages
+Se utiliza SICE-TAC como **referencia metodológica**, sin afirmar que el cálculo propio sea el resultado oficial del sistema ni un flete negociado. Los peajes provienen de una base regional de referencia y su proximidad a la geometría no demuestra el cobro. Las rutas estimadas se diferencian de las viales.
 
-1. Crear un repositorio nuevo denominado `calculadora` en la cuenta `rafaelemg-logistica` (preferiblemente **público** si se quiere una URL pública).
-2. Mantener los archivos y subcarpetas de la aplicación en la raíz de la rama `main`.
-3. En **Settings → Pages**, seleccionar **Build and deployment → Source: GitHub Actions**.
-4. El workflow `.github/workflows/ci-pages.yml` ejecuta pruebas y publica el sitio al realizar push a `main`.
-5. Abrir la URL que indique GitHub Pages, típicamente `https://rafaelemg-logistica.github.io/calculadora/`.
+## Estructura
 
-El código se mantiene en `rafaelemg-logistica/calculadora`; la publicación requiere configurar GitHub Pages con origen GitHub Actions.
+- index.html: asistente paso a paso y resultado cartográfico.
+- advanced.html: edición técnica en otra pestaña.
+- src/config.js: catálogo de parámetros y fuentes.
+- src/mango-engine.js: motor de cantidades, restricciones y costos.
+- src/mango-app.js: experiencia interactiva.
+- src/advanced.js: edición y sincronización.
+- src/routing.js y src/tolls.js: rutas y peajes.
+- assets/peajes-region-central.geojson: estaciones de referencia regional.
+- docs/modelo-y-parametros.md: ecuaciones y reglas.
 
-## Límites y advertencias
+Para servir localmente, ejecutar python3 -m http.server 5173 y abrir http://localhost:5173/. El comando npm test ejecuta las verificaciones automáticas. La publicación a GitHub Pages se realiza desde la rama main.
 
-- No es una tarifa oficial, cotización comercial ni una plataforma de optimización de red.
-- Los costos del libro y su pérdida 2019 **requieren actualización**. La tarifa de acondicionamiento de 74 COP/kg es un **proxy**.
-- El empaque tiene costo base de **cero por falta de dato**, por eso se reporta costo **parcial**.
-- No se comprueba vida útil, frío, volumen, categorías de peaje, capacidad real del centro de acopio ni requisitos comerciales.
-- Los nodos iniciales son referencias urbanas y didácticas, **no infraestructura georreferenciada verificada**.
-- Las estaciones de peaje y sus tarifas proceden de una copia de trabajo del GeoFlujo anterior (origen INVÍAS), **sin actualización automática de vigencia**. La cercanía a una ruta no acredita el paso, sentido ni cobro efectivo. Al usar cotización integral, marcar «la cotización incluye peajes» evita sumar el importe dos veces.
-- El mapa muestra una geometría provisional al modificar los nodos, posteriormente sustituida por la ruta OSRM cuando está disponible. Tiene reintento de carga y proveedor alternativo de teselas.
-- El servidor de demostración OSRM, las teselas comunitarias OSM y los servicios de respaldo no ofrecen niveles de servicio garantizados; comprobar políticas de uso si se escala a uso intensivo.
+La configuración se guarda localmente y se puede importar/exportar como JSON.
 
 ## Licencia
 
-MIT. Este desarrollo no implica aval institucional automático de RAP-E Región Central.
+MIT. Este desarrollo abierto no implica aval institucional automático.
