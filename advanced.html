@@ -31,7 +31,7 @@
       <div class="advanced-intro">
         <span class="eyebrow">AJUSTES TÉCNICOS</span>
         <h1>Parámetros avanzados</h1>
-        <p>Modifica costos, capacidades, conservación y reglas del recorrido. Los cambios se guardan en este navegador y se reflejan en la calculadora. Cada valor distingue su fuente técnica de las estimaciones del modelo.</p>
+        <p>Modifica costos, capacidades, conservación y reglas del recorrido. Modifica los valores y selecciona «Aplicar cambios y recalcular». No perderás tu operación ni la ruta seleccionada. Cada valor distingue su fuente técnica de las estimaciones del modelo.</p>
       </div>
       <section class="settings-card" id="mango"><h2>Mango y rechazo en destino</h2><p>El rechazo se aplica al mango recibido después del transporte; no existen pérdidas de masa en origen.</p><div class="settings-grid" id="fields-mango"></div></section>
       <section class="settings-card" id="empaques"><h2>Empaques, geometría y logística inversa</h2><p>La capacidad del vehículo se limita simultáneamente por peso, volumen, dimensiones y apilamiento. Los empaques retornables se costean por uso cuando su adquisición no está incluida en otro precio.</p><div id="fields-packaging"></div></section>
@@ -65,8 +65,12 @@
         <button id="export-settings" class="subtle">Exportar configuración JSON</button>
         <label class="subtle file-label">Importar configuración JSON<input id="import-settings" type="file" hidden accept=".json,application/json"></label>
         <button id="restore-settings" class="danger-soft">Restaurar parámetros de referencia</button>
+        <span id="apply-message" role="alert" class="inline-message"></span>
       </section>
     </main>
+  </div>
+  <div class="advanced-apply-bar"><span>Los ajustes se aplican a la operación actual.</span>
+    <button id="apply-settings" class="primary" type="button">Aplicar cambios y recalcular</button>
   </div>
   <script type="module" src="./src/advanced.js?v=1"></script>
 </body>
