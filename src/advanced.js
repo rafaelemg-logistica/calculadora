@@ -1,5 +1,5 @@
-import {defaults,loadState,storeState,STORAGE_KEY,CHANNEL_NAME,INSTANCE_ID,PARAMETER_SOURCES,validateState,validateParameters,validCoordinates} from './config.js';
-import {fetchRoadLeg} from './routing.js';
+import {defaults,loadState,storeState,STORAGE_KEY,CHANNEL_NAME,INSTANCE_ID,PARAMETER_SOURCES,validateState,validateParameters,validCoordinates} from './config.js?v=2';
+import {fetchRoadLeg} from './routing.js?v=2';
 import {parseTollCatalog,matchTollsToRoute,tollSelection,overridesForLeg} from './tolls.js';
 
 const $=id=>document.getElementById(id);
